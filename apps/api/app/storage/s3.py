@@ -12,6 +12,8 @@ class S3StorageError(FileStorageError):
 
 
 class S3Client(Protocol):
+    async def get_object(self, **kwargs: object) -> object: ...
+
     async def put_object(self, **kwargs: object) -> object: ...
 
     async def delete_object(self, **kwargs: object) -> object: ...
@@ -71,6 +73,15 @@ class S3FileStorage:
                 )
         except (BotoCoreError, ClientError, OSError) as exc:
             raise S3StorageError("failed to store object") from exc
+
+    async def get(self, *, object_key: str) -> bytes:
+        try:
+            async with self._client() as client:
+                response = await client.get_object(Bucket=self._bucket, Key=object_key)
+                body = response["Body"]
+                return await body.read()
+        except (BotoCoreError, ClientError, OSError, KeyError) as exc:
+            raise S3StorageError("failed to read object") from exc
 
     async def delete(self, *, object_key: str) -> None:
         try:

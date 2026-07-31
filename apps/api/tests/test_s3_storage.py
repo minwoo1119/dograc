@@ -18,6 +18,17 @@ class RecordingS3Client:
             raise self.error
         return {}
 
+    async def get_object(self, **kwargs: object) -> object:
+        self.calls.append(("get_object", kwargs))
+        if self.error:
+            raise self.error
+
+        class Body:
+            async def read(self) -> bytes:
+                return b"stored content"
+
+        return {"Body": Body()}
+
     async def delete_object(self, **kwargs: object) -> object:
         self.calls.append(("delete_object", kwargs))
         if self.error:
@@ -78,6 +89,18 @@ async def test_put_passes_content_and_metadata_to_s3() -> None:
                 "ContentType": "application/pdf",
             },
         )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_get_reads_object_body() -> None:
+    client = RecordingS3Client()
+
+    content = await create_storage(client).get(object_key="stored.txt")
+
+    assert content == b"stored content"
+    assert client.calls == [
+        ("get_object", {"Bucket": "documents", "Key": "stored.txt"}),
     ]
 
 

@@ -6,6 +6,8 @@ class FileStorageError(OSError):
 
 
 class FileStorage(Protocol):
+    async def get(self, *, object_key: str) -> bytes: ...
+
     async def put(
         self,
         *,
