@@ -43,3 +43,15 @@ verified session or token while preserving the same service boundary.
 Single-workspace reads and deletes use both `workspace_id` and `owner_id` in their
 lookup. Missing and unauthorized resources return the same `WORKSPACE_NOT_FOUND`
 response so the endpoint does not reveal whether another owner has that identifier.
+
+## Document ingestion boundary
+
+`Document` stores workspace-scoped metadata and processing state. Immutable
+`DocumentVersion` records preserve the object-storage key, SHA-256 content hash,
+size, and version number required for idempotent processing and source tracing.
+
+Before object storage or parsing, Phase 1 uploads pass framework-independent
+validation. The validator rejects path components and control characters in file
+names, unsupported extensions, empty or oversized content, invalid UTF-8 text,
+binary text, and PDF/TXT content that conflicts with the extension or declared MIME
+type. PDF and TXT are the only accepted formats in this phase.

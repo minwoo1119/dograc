@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     api_port: int = Field(default=8000, ge=1, le=65535)
     docs_enabled: bool = True
     database_url: str = "postgresql+asyncpg://dograc:dograc@localhost:5432/dograc"
+    max_document_size_bytes: int = Field(default=25 * 1024 * 1024, gt=0)
 
 
 @lru_cache
