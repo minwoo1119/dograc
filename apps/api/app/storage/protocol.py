@@ -1,6 +1,10 @@
 from typing import Protocol
 
 
+class FileStorageError(OSError):
+    """Raised when a file storage operation fails."""
+
+
 class FileStorage(Protocol):
     async def put(
         self,

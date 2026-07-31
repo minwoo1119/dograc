@@ -5,6 +5,8 @@ from typing import Annotated
 from fastapi import Depends, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.storage.protocol import FileStorage
+
 
 async def get_db_session(request: Request) -> AsyncIterator[AsyncSession]:
     async with request.app.state.session_factory() as session:
@@ -17,5 +19,10 @@ def get_current_user_id(
     return user_id
 
 
+def get_file_storage(request: Request) -> FileStorage:
+    return request.app.state.file_storage
+
+
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
 CurrentUserId = Annotated[uuid.UUID, Depends(get_current_user_id)]
+FileStorageDependency = Annotated[FileStorage, Depends(get_file_storage)]

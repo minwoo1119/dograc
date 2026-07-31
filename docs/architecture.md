@@ -55,3 +55,11 @@ validation. The validator rejects path components and control characters in file
 names, unsupported extensions, empty or oversized content, invalid UTF-8 text,
 binary text, and PDF/TXT content that conflicts with the extension or declared MIME
 type. PDF and TXT are the only accepted formats in this phase.
+
+Validated originals are written through the `FileStorage` protocol. The production
+adapter uses asynchronous S3-compatible calls and supports MinIO through the
+configured endpoint. An upload verifies Workspace ownership before writing, then
+stores the immutable original and commits `Document` plus `DocumentVersion` metadata.
+If the database commit fails after object creation, the service rolls back and
+attempts a compensating object deletion. Storage provider exceptions are converted
+to stable application errors without returning credential or endpoint details.

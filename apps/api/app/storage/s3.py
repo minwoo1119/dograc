@@ -4,8 +4,10 @@ from typing import Protocol
 import aioboto3
 from botocore.exceptions import BotoCoreError, ClientError
 
+from app.storage.protocol import FileStorageError
 
-class S3StorageError(Exception):
+
+class S3StorageError(FileStorageError):
     """Raised when an S3-compatible storage operation fails."""
 
 
