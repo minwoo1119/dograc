@@ -76,3 +76,45 @@ def test_list_workspaces_is_isolated_by_owner(tmp_path: Path) -> None:
 
     assert response.status_code == 200
     assert [workspace["name"] for workspace in response.json()] == ["First user workspace"]
+
+
+def test_get_workspace_does_not_expose_another_owners_workspace(tmp_path: Path) -> None:
+    owner_id = uuid.uuid4()
+    other_user_id = uuid.uuid4()
+    with workspace_client(tmp_path / "get-isolation.db") as client:
+        created = client.post(
+            "/api/v1/workspaces",
+            headers={"X-User-ID": str(owner_id)},
+            json={"name": "Private workspace"},
+        )
+
+        response = client.get(
+            f"/api/v1/workspaces/{created.json()['id']}",
+            headers={"X-User-ID": str(other_user_id)},
+        )
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": {
+            "code": "WORKSPACE_NOT_FOUND",
+            "message": "Workspace was not found.",
+        }
+    }
+
+
+def test_delete_workspace_removes_only_owned_workspace(tmp_path: Path) -> None:
+    owner_id = uuid.uuid4()
+    with workspace_client(tmp_path / "delete.db") as client:
+        created = client.post(
+            "/api/v1/workspaces",
+            headers={"X-User-ID": str(owner_id)},
+            json={"name": "Disposable workspace"},
+        )
+        workspace_url = f"/api/v1/workspaces/{created.json()['id']}"
+
+        deleted = client.delete(workspace_url, headers={"X-User-ID": str(owner_id)})
+        fetched = client.get(workspace_url, headers={"X-User-ID": str(owner_id)})
+
+    assert deleted.status_code == 204
+    assert deleted.content == b""
+    assert fetched.status_code == 404

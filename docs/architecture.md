@@ -39,3 +39,7 @@ the required `X-User-ID` header. This header is a development-only trust boundar
 not authentication. A production reverse proxy must not accept it directly from
 untrusted clients; the future authentication layer will derive the identifier from a
 verified session or token while preserving the same service boundary.
+
+Single-workspace reads and deletes use both `workspace_id` and `owner_id` in their
+lookup. Missing and unauthorized resources return the same `WORKSPACE_NOT_FOUND`
+response so the endpoint does not reveal whether another owner has that identifier.

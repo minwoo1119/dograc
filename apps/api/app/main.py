@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.api.v1.router import api_router
 from app.core.config import Settings, get_settings
+from app.core.errors import ApplicationError, application_error_handler
 from app.db.health import DatabaseReadinessCheck
 from app.db.session import create_engine, create_session_factory
 from app.health.checks import ReadinessCheck
@@ -46,6 +47,7 @@ def create_app(
         redoc_url=None,
         lifespan=lifespan,
     )
+    application.add_exception_handler(ApplicationError, application_error_handler)
     application.include_router(api_router, prefix="/api/v1")
     return application
 

@@ -1,6 +1,9 @@
-from fastapi import APIRouter, status
+import uuid
+
+from fastapi import APIRouter, Response, status
 
 from app.api.dependencies import CurrentUserId, DatabaseSession
+from app.core.errors import ErrorResponse
 from app.workspaces.schemas import WorkspaceCreate, WorkspaceResponse
 from app.workspaces.service import WorkspaceService
 
@@ -24,3 +27,37 @@ async def list_workspaces(
 ) -> list[WorkspaceResponse]:
     workspaces = await WorkspaceService(session).list_for_owner(user_id)
     return [WorkspaceResponse.model_validate(workspace) for workspace in workspaces]
+
+
+@router.get(
+    "/{workspace_id}",
+    response_model=WorkspaceResponse,
+    responses={status.HTTP_404_NOT_FOUND: {"model": ErrorResponse}},
+)
+async def get_workspace(
+    workspace_id: uuid.UUID,
+    session: DatabaseSession,
+    user_id: CurrentUserId,
+) -> WorkspaceResponse:
+    workspace = await WorkspaceService(session).get(
+        workspace_id=workspace_id,
+        owner_id=user_id,
+    )
+    return WorkspaceResponse.model_validate(workspace)
+
+
+@router.delete(
+    "/{workspace_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={status.HTTP_404_NOT_FOUND: {"model": ErrorResponse}},
+)
+async def delete_workspace(
+    workspace_id: uuid.UUID,
+    session: DatabaseSession,
+    user_id: CurrentUserId,
+) -> Response:
+    await WorkspaceService(session).delete(
+        workspace_id=workspace_id,
+        owner_id=user_id,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
