@@ -30,3 +30,12 @@ details or credentials.
 Only host-bound ports are published. Service-to-service traffic uses the private
 `backend` bridge network and internal DNS names. Named volumes keep state independent
 from container lifecycles.
+
+## Workspace ownership boundary
+
+Workspace queries always include the current owner identifier in the database
+predicate. During the pre-authentication MVP, the API receives this identifier from
+the required `X-User-ID` header. This header is a development-only trust boundary,
+not authentication. A production reverse proxy must not accept it directly from
+untrusted clients; the future authentication layer will derive the identifier from a
+verified session or token while preserving the same service boundary.

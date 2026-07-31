@@ -2,24 +2,42 @@ from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.api.v1.router import api_router
 from app.core.config import Settings, get_settings
+from app.db.health import DatabaseReadinessCheck
+from app.db.session import create_engine, create_session_factory
 from app.health.checks import ReadinessCheck
 
 
 def create_app(
     *,
     settings: Settings | None = None,
-    readiness_checks: Sequence[ReadinessCheck] = (),
+    readiness_checks: Sequence[ReadinessCheck] | None = None,
+    session_factory: async_sessionmaker[AsyncSession] | None = None,
 ) -> FastAPI:
     app_settings = settings or get_settings()
+    engine = None
+    if session_factory is None:
+        engine = create_engine(app_settings.database_url)
+        session_factory = create_session_factory(engine)
+    app_readiness_checks = (
+        tuple(readiness_checks)
+        if readiness_checks is not None
+        else (DatabaseReadinessCheck(session_factory),)
+    )
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         application.state.settings = app_settings
-        application.state.readiness_checks = tuple(readiness_checks)
-        yield
+        application.state.readiness_checks = app_readiness_checks
+        application.state.session_factory = session_factory
+        try:
+            yield
+        finally:
+            if engine is not None:
+                await engine.dispose()
 
     application = FastAPI(
         title=app_settings.app_name,
