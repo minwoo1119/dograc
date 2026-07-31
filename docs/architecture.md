@@ -17,3 +17,16 @@ object-storage adapters will register concrete checks when those adapters are ad
 Exception messages are not returned to clients because they can contain connection
 details or credentials.
 
+## Container topology
+
+`infra/compose.yaml` defines a portable single-host backend deployment:
+
+- The API is built from `apps/api/Dockerfile` and runs as an unprivileged user.
+- PostgreSQL owns application metadata.
+- Qdrant owns vector search records.
+- MinIO owns uploaded source files.
+- A one-shot MinIO client creates the configured bucket idempotently.
+
+Only host-bound ports are published. Service-to-service traffic uses the private
+`backend` bridge network and internal DNS names. Named volumes keep state independent
+from container lifecycles.
