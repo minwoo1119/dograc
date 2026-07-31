@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     docs_enabled: bool = True
     database_url: str = "postgresql+asyncpg://dograc:dograc@localhost:5432/dograc"
     max_document_size_bytes: int = Field(default=25 * 1024 * 1024, gt=0)
+    object_storage_endpoint: str = "http://localhost:9000"
+    object_storage_access_key: str = "change-me"
+    object_storage_secret_key: str = "change-me"
+    object_storage_bucket: str = "dograc"
+    object_storage_region: str = "us-east-1"
 
 
 @lru_cache
