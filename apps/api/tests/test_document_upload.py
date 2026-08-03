@@ -18,6 +18,7 @@ from app.db.models.workspace import Workspace
 from app.documents.errors import DocumentProcessingError
 from app.documents.service import DocumentService
 from app.main import create_app
+from app.vector_store.protocol import VectorRecord, VectorStoreError
 
 
 class MemoryFileStorage:
@@ -39,10 +40,55 @@ class MemoryFileStorage:
         return None
 
 
+class DeterministicEmbeddingModel:
+    dimensions = 3
+
+    async def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return [[float(len(text)), 1.0, 0.0] for text in texts]
+
+    async def embed_query(self, text: str) -> list[float]:
+        return (await self.embed_documents([text]))[0]
+
+
+class MemoryVectorStore:
+    def __init__(self) -> None:
+        self.records: dict[uuid.UUID, VectorRecord] = {}
+
+    async def ensure_collection(self, *, dimensions: int) -> None:
+        assert dimensions == 3
+
+    async def upsert(self, records: list[VectorRecord]) -> None:
+        self.records.update({record.id: record for record in records})
+
+    async def delete_document(
+        self,
+        *,
+        workspace_id: uuid.UUID,
+        document_id: uuid.UUID,
+    ) -> None:
+        self.records = {
+            record_id: record
+            for record_id, record in self.records.items()
+            if not (
+                record.payload["workspace_id"] == str(workspace_id)
+                and record.payload["document_id"] == str(document_id)
+            )
+        }
+
+    async def check(self) -> None:
+        return None
+
+
+class FailingVectorStore(MemoryVectorStore):
+    async def upsert(self, records: list[VectorRecord]) -> None:
+        raise VectorStoreError("qdrant unavailable")
+
+
 @contextmanager
 def document_client(
     database_path: Path,
     storage: MemoryFileStorage,
+    vector_store: MemoryVectorStore | None = None,
     *,
     max_size_bytes: int = 1024,
 ) -> Iterator[TestClient]:
@@ -63,6 +109,8 @@ def document_client(
         readiness_checks=(),
         session_factory=session_factory,
         file_storage=storage,
+        embedding_model=DeterministicEmbeddingModel(),
+        vector_store=vector_store or MemoryVectorStore(),
     )
     with TestClient(app) as client:
         yield client
@@ -167,8 +215,9 @@ async def test_upload_deletes_object_when_database_commit_fails(tmp_path: Path) 
 
 def test_process_document_persists_pages_idempotently(tmp_path: Path) -> None:
     storage = MemoryFileStorage()
+    vector_store = MemoryVectorStore()
     user_id = uuid.uuid4()
-    with document_client(tmp_path / "process.db", storage) as client:
+    with document_client(tmp_path / "process.db", storage, vector_store) as client:
         workspace_id = create_workspace(client, user_id)
         uploaded = client.post(
             f"/api/v1/workspaces/{workspace_id}/documents",
@@ -199,6 +248,10 @@ def test_process_document_persists_pages_idempotently(tmp_path: Path) -> None:
     assert second.json()["status"] == "ready"
     assert (page_count, page_text) == (1, "페이지 내용")
     assert chunk_count == 1
+    assert len(vector_store.records) == 1
+    record = next(iter(vector_store.records.values()))
+    assert record.payload["workspace_id"] == workspace_id
+    assert record.payload["page_number"] == 1
 
 
 def test_process_document_records_parse_failure(tmp_path: Path) -> None:
@@ -247,3 +300,34 @@ def test_process_document_hides_another_owners_document(tmp_path: Path) -> None:
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "DOCUMENT_NOT_FOUND"
+
+
+def test_process_document_records_vector_index_failure(tmp_path: Path) -> None:
+    storage = MemoryFileStorage()
+    user_id = uuid.uuid4()
+    vector_store = FailingVectorStore()
+    with document_client(tmp_path / "vector-failure.db", storage, vector_store) as client:
+        workspace_id = create_workspace(client, user_id)
+        uploaded = client.post(
+            f"/api/v1/workspaces/{workspace_id}/documents",
+            headers={"X-User-ID": str(user_id)},
+            files={"file": ("notes.txt", b"content", "text/plain")},
+        )
+        document_id = uploaded.json()["id"]
+        response = client.post(
+            f"/api/v1/documents/{document_id}/process",
+            headers={"X-User-ID": str(user_id)},
+        )
+
+        async def load_status() -> tuple[str, str | None]:
+            async with client.app.state.session_factory() as session:
+                document = await session.get(Document, uuid.UUID(document_id))
+                assert document is not None
+                return document.status.value, document.failure_code
+
+        stored_status = asyncio.run(load_status())
+
+    assert response.status_code == 500
+    assert response.json()["error"]["code"] == "DOCUMENT_PROCESSING_FAILED"
+    assert stored_status == ("failed", "DOCUMENT_PROCESSING_FAILED")
+    assert vector_store.records == {}

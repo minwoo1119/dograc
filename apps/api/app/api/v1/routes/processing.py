@@ -2,7 +2,13 @@ import uuid
 
 from fastapi import APIRouter, Request, status
 
-from app.api.dependencies import CurrentUserId, DatabaseSession, FileStorageDependency
+from app.api.dependencies import (
+    CurrentUserId,
+    DatabaseSession,
+    EmbeddingModelDependency,
+    FileStorageDependency,
+    VectorStoreDependency,
+)
 from app.core.errors import ErrorResponse
 from app.document_processing.chunking import RecursiveCharacterChunker
 from app.document_processing.service import DocumentProcessingService
@@ -26,10 +32,14 @@ async def process_document(
     session: DatabaseSession,
     user_id: CurrentUserId,
     file_storage: FileStorageDependency,
+    embedding_model: EmbeddingModelDependency,
+    vector_store: VectorStoreDependency,
 ) -> DocumentResponse:
     document = await DocumentProcessingService(
         session=session,
         file_storage=file_storage,
+        embedding_model=embedding_model,
+        vector_store=vector_store,
         chunker=RecursiveCharacterChunker(
             chunk_size=request.app.state.settings.chunk_size_chars,
             chunk_overlap=request.app.state.settings.chunk_overlap_chars,

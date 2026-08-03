@@ -1,7 +1,9 @@
 import asyncio
 from typing import Protocol
 
-from sentence_transformers import SentenceTransformer
+
+class EmbeddingModelError(OSError):
+    """Raised when an embedding provider cannot produce vectors."""
 
 
 class EmbeddingModel(Protocol):
@@ -14,11 +16,10 @@ class EmbeddingModel(Protocol):
 
 
 class SentenceTransformerEmbeddingModel:
-    def __init__(self, model_name: str) -> None:
-        self._model = SentenceTransformer(model_name)
-        self._dimensions = self._model.get_sentence_embedding_dimension()
-        if self._dimensions is None:
-            raise ValueError("Embedding model does not expose its dimensions")
+    def __init__(self, model_name: str, *, dimensions: int) -> None:
+        self._model_name = model_name
+        self._model = None
+        self._dimensions = dimensions
 
     @property
     def dimensions(self) -> int:
@@ -27,13 +28,31 @@ class SentenceTransformerEmbeddingModel:
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
-        vectors = await asyncio.to_thread(
-            self._model.encode,
-            texts,
-            normalize_embeddings=True,
-            convert_to_numpy=True,
-        )
+        try:
+            model = await asyncio.to_thread(self._get_or_load_model)
+            vectors = await asyncio.to_thread(
+                model.encode,
+                texts,
+                normalize_embeddings=True,
+                convert_to_numpy=True,
+            )
+        except (OSError, ValueError, RuntimeError) as exc:
+            raise EmbeddingModelError("failed to create embeddings") from exc
         return vectors.tolist()
 
     async def embed_query(self, text: str) -> list[float]:
         return (await self.embed_documents([text]))[0]
+
+    def _get_or_load_model(self):
+        if self._model is None:
+            from sentence_transformers import SentenceTransformer
+
+            model = SentenceTransformer(self._model_name)
+            actual_dimensions = model.get_sentence_embedding_dimension()
+            if actual_dimensions != self._dimensions:
+                raise ValueError(
+                    f"Configured embedding dimensions {self._dimensions} "
+                    f"do not match model dimensions {actual_dimensions}"
+                )
+            self._model = model
+        return self._model

@@ -3,10 +3,10 @@ import uuid
 from qdrant_client import AsyncQdrantClient, models
 from qdrant_client.http.exceptions import UnexpectedResponse
 
-from app.vector_store.protocol import VectorRecord
+from app.vector_store.protocol import VectorRecord, VectorStoreError
 
 
-class QdrantVectorStoreError(OSError):
+class QdrantVectorStoreError(VectorStoreError):
     """Raised when a Qdrant operation fails."""
 
 

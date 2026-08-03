@@ -77,3 +77,11 @@ current settings are explicitly character-based (`CHUNK_SIZE_CHARS` and
 retains Workspace, document, version, page, source filename, parser, strategy,
 sequence, and content-hash metadata. Reprocessing replaces pages and their cascaded
 chunks atomically, preventing duplicate search records in PostgreSQL.
+
+Chunk text is embedded through the `EmbeddingModel` protocol and indexed through
+the `VectorStore` protocol. The default adapters use Sentence Transformers with
+`BAAI/bge-m3` and asynchronous Qdrant operations. Every Qdrant payload includes the
+Workspace and source-tracing metadata required for mandatory retrieval filtering and
+citations. A document reaches `ready` only after vector upsert succeeds. Indexing or
+embedding failures roll back PostgreSQL changes, remove document-scoped vectors when
+possible, and record `DOCUMENT_PROCESSING_FAILED`.

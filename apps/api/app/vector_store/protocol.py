@@ -5,6 +5,10 @@ from typing import Protocol
 PayloadValue = str | int | float | bool | None
 
 
+class VectorStoreError(OSError):
+    """Raised when a vector storage operation fails."""
+
+
 @dataclass(frozen=True, slots=True)
 class VectorRecord:
     id: uuid.UUID

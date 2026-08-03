@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     object_storage_region: str = "us-east-1"
     chunk_size_chars: int = Field(default=1200, gt=0)
     chunk_overlap_chars: int = Field(default=150, ge=0)
+    embedding_model: str = "BAAI/bge-m3"
+    embedding_dimensions: int = Field(default=1024, gt=0)
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: str | None = None
+    qdrant_collection: str = "dograc_chunks"
 
     @model_validator(mode="after")
     def validate_chunk_settings(self) -> "Settings":

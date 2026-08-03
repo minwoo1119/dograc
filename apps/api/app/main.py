@@ -10,9 +10,13 @@ from app.core.errors import ApplicationError, application_error_handler
 from app.db.health import DatabaseReadinessCheck
 from app.db.session import create_engine, create_session_factory
 from app.health.checks import ReadinessCheck
+from app.models.embedding import EmbeddingModel, SentenceTransformerEmbeddingModel
 from app.storage.health import FileStorageReadinessCheck
 from app.storage.protocol import FileStorage
 from app.storage.s3 import S3FileStorage
+from app.vector_store.health import VectorStoreReadinessCheck
+from app.vector_store.protocol import VectorStore
+from app.vector_store.qdrant import QdrantVectorStore
 
 
 def create_app(
@@ -21,6 +25,8 @@ def create_app(
     readiness_checks: Sequence[ReadinessCheck] | None = None,
     session_factory: async_sessionmaker[AsyncSession] | None = None,
     file_storage: FileStorage | None = None,
+    embedding_model: EmbeddingModel | None = None,
+    vector_store: VectorStore | None = None,
 ) -> FastAPI:
     app_settings = settings or get_settings()
     engine = None
@@ -35,12 +41,24 @@ def create_app(
             bucket=app_settings.object_storage_bucket,
             region=app_settings.object_storage_region,
         )
+    if embedding_model is None:
+        embedding_model = SentenceTransformerEmbeddingModel(
+            app_settings.embedding_model,
+            dimensions=app_settings.embedding_dimensions,
+        )
+    if vector_store is None:
+        vector_store = QdrantVectorStore(
+            url=app_settings.qdrant_url,
+            api_key=app_settings.qdrant_api_key,
+            collection_name=app_settings.qdrant_collection,
+        )
     app_readiness_checks = (
         tuple(readiness_checks)
         if readiness_checks is not None
         else (
             DatabaseReadinessCheck(session_factory),
             FileStorageReadinessCheck(file_storage),
+            VectorStoreReadinessCheck(vector_store),
         )
     )
 
@@ -50,6 +68,8 @@ def create_app(
         application.state.readiness_checks = app_readiness_checks
         application.state.session_factory = session_factory
         application.state.file_storage = file_storage
+        application.state.embedding_model = embedding_model
+        application.state.vector_store = vector_store
         try:
             yield
         finally:
