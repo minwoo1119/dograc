@@ -10,6 +10,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
     Uuid,
     func,
@@ -95,3 +96,38 @@ class DocumentVersion(Base):
     )
 
     document: Mapped[Document] = relationship(back_populates="versions")
+    pages: Mapped[list["DocumentPage"]] = relationship(
+        back_populates="document_version",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="DocumentPage.page_number",
+    )
+
+
+class DocumentPage(Base):
+    __tablename__ = "document_pages"
+    __table_args__ = (
+        UniqueConstraint(
+            "document_version_id",
+            "page_number",
+            name="uq_document_pages_document_version_id_page_number",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    document_version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("document_versions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    page_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    section_title: Mapped[str | None] = mapped_column(String(500))
+    parser_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    document_version: Mapped[DocumentVersion] = relationship(back_populates="pages")
