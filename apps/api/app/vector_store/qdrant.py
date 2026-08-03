@@ -3,7 +3,7 @@ import uuid
 from qdrant_client import AsyncQdrantClient, models
 from qdrant_client.http.exceptions import UnexpectedResponse
 
-from app.vector_store.protocol import VectorRecord, VectorStoreError
+from app.vector_store.protocol import VectorRecord, VectorSearchResult, VectorStoreError
 
 
 class QdrantVectorStoreError(VectorStoreError):
@@ -82,6 +82,47 @@ class QdrantVectorStore:
             )
         except (UnexpectedResponse, OSError, ValueError) as exc:
             raise QdrantVectorStoreError("failed to delete document vectors") from exc
+
+    async def search(
+        self,
+        *,
+        query_vector: list[float],
+        workspace_id: uuid.UUID,
+        document_ids: list[uuid.UUID] | None,
+        limit: int,
+    ) -> list[VectorSearchResult]:
+        conditions = [
+            models.FieldCondition(
+                key="workspace_id",
+                match=models.MatchValue(value=str(workspace_id)),
+            )
+        ]
+        if document_ids:
+            conditions.append(
+                models.FieldCondition(
+                    key="document_id",
+                    match=models.MatchAny(any=[str(document_id) for document_id in document_ids]),
+                )
+            )
+        try:
+            response = await self._client.query_points(
+                collection_name=self._collection_name,
+                query=query_vector,
+                query_filter=models.Filter(must=conditions),
+                limit=limit,
+                with_payload=True,
+                with_vectors=False,
+            )
+        except (UnexpectedResponse, OSError, ValueError) as exc:
+            raise QdrantVectorStoreError("failed to search vectors") from exc
+        return [
+            VectorSearchResult(
+                id=uuid.UUID(str(point.id)),
+                score=point.score,
+                payload=dict(point.payload or {}),
+            )
+            for point in response.points
+        ]
 
     async def check(self) -> None:
         try:
