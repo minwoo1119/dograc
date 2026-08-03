@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: str | None = None
     qdrant_collection: str = "dograc_chunks"
+    retrieval_top_k: int = Field(default=10, ge=1, le=50)
 
     @model_validator(mode="after")
     def validate_chunk_settings(self) -> "Settings":

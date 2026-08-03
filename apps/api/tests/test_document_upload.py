@@ -18,7 +18,7 @@ from app.db.models.workspace import Workspace
 from app.documents.errors import DocumentProcessingError
 from app.documents.service import DocumentService
 from app.main import create_app
-from app.vector_store.protocol import VectorRecord, VectorStoreError
+from app.vector_store.protocol import VectorRecord, VectorSearchResult, VectorStoreError
 
 
 class MemoryFileStorage:
@@ -74,6 +74,26 @@ class MemoryVectorStore:
                 and record.payload["document_id"] == str(document_id)
             )
         }
+
+    async def search(
+        self,
+        *,
+        query_vector: list[float],
+        workspace_id: uuid.UUID,
+        document_ids: list[uuid.UUID] | None,
+        limit: int,
+    ) -> list[VectorSearchResult]:
+        allowed_documents = {str(document_id) for document_id in document_ids or []}
+        matches = [
+            record
+            for record in self.records.values()
+            if record.payload["workspace_id"] == str(workspace_id)
+            and (not allowed_documents or record.payload["document_id"] in allowed_documents)
+        ]
+        return [
+            VectorSearchResult(id=record.id, score=1.0, payload=record.payload)
+            for record in matches[:limit]
+        ]
 
     async def check(self) -> None:
         return None
@@ -331,3 +351,38 @@ def test_process_document_records_vector_index_failure(tmp_path: Path) -> None:
     assert response.json()["error"]["code"] == "DOCUMENT_PROCESSING_FAILED"
     assert stored_status == ("failed", "DOCUMENT_PROCESSING_FAILED")
     assert vector_store.records == {}
+
+
+def test_dense_retrieval_returns_only_owned_workspace_chunks(tmp_path: Path) -> None:
+    storage = MemoryFileStorage()
+    vector_store = MemoryVectorStore()
+    first_user_id = uuid.uuid4()
+    second_user_id = uuid.uuid4()
+    with document_client(tmp_path / "retrieval.db", storage, vector_store) as client:
+        first_workspace_id = create_workspace(client, first_user_id)
+        second_workspace_id = create_workspace(client, second_user_id)
+        for workspace_id, user_id, text in (
+            (first_workspace_id, first_user_id, b"first workspace evidence"),
+            (second_workspace_id, second_user_id, b"second workspace secret"),
+        ):
+            uploaded = client.post(
+                f"/api/v1/workspaces/{workspace_id}/documents",
+                headers={"X-User-ID": str(user_id)},
+                files={"file": ("notes.txt", text, "text/plain")},
+            )
+            processed = client.post(
+                f"/api/v1/documents/{uploaded.json()['id']}/process",
+                headers={"X-User-ID": str(user_id)},
+            )
+            assert processed.status_code == 200
+
+        response = client.post(
+            f"/api/v1/workspaces/{first_workspace_id}/search",
+            headers={"X-User-ID": str(first_user_id)},
+            json={"question": "  first   evidence  ", "top_k": 10},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["normalized_question"] == "first evidence"
+    assert [chunk["text"] for chunk in response.json()["chunks"]] == ["first workspace evidence"]
+    assert response.json()["chunks"][0]["score"] == 1.0

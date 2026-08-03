@@ -85,3 +85,10 @@ Workspace and source-tracing metadata required for mandatory retrieval filtering
 citations. A document reaches `ready` only after vector upsert succeeds. Indexing or
 embedding failures roll back PostgreSQL changes, remove document-scoped vectors when
 possible, and record `DOCUMENT_PROCESSING_FAILED`.
+
+Dense retrieval embeds the normalized question and requires `workspace_id` in every
+`VectorStore.search` call. Optional document filters are combined with that mandatory
+filter. Qdrant determines rank and score, but its payload is not treated as the
+authorization source: candidate Chunk IDs are loaded again from PostgreSQL with
+Workspace, selected-document, and `ready`-status predicates before text or source
+metadata is returned.

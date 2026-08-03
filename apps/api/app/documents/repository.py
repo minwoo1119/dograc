@@ -4,7 +4,13 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models.document import Document, DocumentChunk, DocumentPage, DocumentVersion
+from app.db.models.document import (
+    Document,
+    DocumentChunk,
+    DocumentPage,
+    DocumentStatus,
+    DocumentVersion,
+)
 from app.db.models.workspace import Workspace
 
 
@@ -46,3 +52,26 @@ class DocumentRepository:
         )
         version.pages = pages
         await self._session.flush()
+
+    async def get_chunks_for_retrieval(
+        self,
+        *,
+        workspace_id: uuid.UUID,
+        chunk_ids: list[uuid.UUID],
+        document_ids: list[uuid.UUID] | None,
+    ) -> dict[uuid.UUID, DocumentChunk]:
+        if not chunk_ids:
+            return {}
+        statement = (
+            select(DocumentChunk)
+            .join(Document, Document.id == DocumentChunk.document_id)
+            .where(
+                DocumentChunk.workspace_id == workspace_id,
+                DocumentChunk.id.in_(chunk_ids),
+                Document.status == DocumentStatus.READY,
+            )
+        )
+        if document_ids:
+            statement = statement.where(DocumentChunk.document_id.in_(document_ids))
+        chunks = await self._session.scalars(statement)
+        return {chunk.id: chunk for chunk in chunks}
