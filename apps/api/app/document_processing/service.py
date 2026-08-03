@@ -5,7 +5,8 @@ import uuid
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.document import Document, DocumentPage, DocumentStatus
+from app.db.models.document import Document, DocumentChunk, DocumentPage, DocumentStatus
+from app.document_processing.chunking import RecursiveCharacterChunker
 from app.document_processing.parsers import ParserRegistry
 from app.document_processing.protocol import DocumentParseError
 from app.documents.errors import (
@@ -24,10 +25,15 @@ class DocumentProcessingService:
         session: AsyncSession,
         file_storage: FileStorage,
         parser_registry: ParserRegistry | None = None,
+        chunker: RecursiveCharacterChunker | None = None,
     ) -> None:
         self._session = session
         self._file_storage = file_storage
         self._parser_registry = parser_registry or ParserRegistry()
+        self._chunker = chunker or RecursiveCharacterChunker(
+            chunk_size=1200,
+            chunk_overlap=150,
+        )
         self._repository = DocumentRepository(session)
 
     async def process(self, *, document_id: uuid.UUID, owner_id: uuid.UUID) -> Document:
@@ -52,16 +58,35 @@ class DocumentProcessingService:
             await self._session.commit()
             raise DocumentParseFailedError from exc
 
-        pages = [
-            DocumentPage(
+        pages: list[DocumentPage] = []
+        chunk_index = 0
+        for page in parsed.pages:
+            page_entity = DocumentPage(
                 document_version_id=version.id,
                 page_number=page.page_number,
                 text=page.text,
                 parser_name=parsed.parser_name,
                 content_hash=hashlib.sha256(page.text.encode()).hexdigest(),
             )
-            for page in parsed.pages
-        ]
+            page_entity.chunks = []
+            for chunk in self._chunker.split(page.text):
+                page_entity.chunks.append(
+                    DocumentChunk(
+                        workspace_id=document.workspace_id,
+                        document_id=document.id,
+                        document_version_id=version.id,
+                        source_file_name=document.source_file_name,
+                        page_number=page.page_number,
+                        section_title=page_entity.section_title,
+                        chunk_index=chunk_index,
+                        parser_name=parsed.parser_name,
+                        chunking_strategy=self._chunker.name,
+                        text=chunk.text,
+                        content_hash=hashlib.sha256(chunk.text.encode()).hexdigest(),
+                    )
+                )
+                chunk_index += 1
+            pages.append(page_entity)
         try:
             await self._repository.replace_pages(version=version, pages=pages)
             document.status = DocumentStatus.READY

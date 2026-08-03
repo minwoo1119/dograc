@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +23,14 @@ class Settings(BaseSettings):
     object_storage_secret_key: str = "change-me"
     object_storage_bucket: str = "dograc"
     object_storage_region: str = "us-east-1"
+    chunk_size_chars: int = Field(default=1200, gt=0)
+    chunk_overlap_chars: int = Field(default=150, ge=0)
+
+    @model_validator(mode="after")
+    def validate_chunk_settings(self) -> "Settings":
+        if self.chunk_overlap_chars >= self.chunk_size_chars:
+            raise ValueError("CHUNK_OVERLAP_CHARS must be smaller than CHUNK_SIZE_CHARS")
+        return self
 
 
 @lru_cache

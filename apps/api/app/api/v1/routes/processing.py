@@ -1,9 +1,10 @@
 import uuid
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Request, status
 
 from app.api.dependencies import CurrentUserId, DatabaseSession, FileStorageDependency
 from app.core.errors import ErrorResponse
+from app.document_processing.chunking import RecursiveCharacterChunker
 from app.document_processing.service import DocumentProcessingService
 from app.documents.schemas import DocumentResponse
 
@@ -21,6 +22,7 @@ router = APIRouter()
 )
 async def process_document(
     document_id: uuid.UUID,
+    request: Request,
     session: DatabaseSession,
     user_id: CurrentUserId,
     file_storage: FileStorageDependency,
@@ -28,5 +30,9 @@ async def process_document(
     document = await DocumentProcessingService(
         session=session,
         file_storage=file_storage,
+        chunker=RecursiveCharacterChunker(
+            chunk_size=request.app.state.settings.chunk_size_chars,
+            chunk_overlap=request.app.state.settings.chunk_overlap_chars,
+        ),
     ).process(document_id=document_id, owner_id=user_id)
     return DocumentResponse.model_validate(document)

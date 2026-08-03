@@ -70,3 +70,10 @@ the parser name and SHA-256 text hash. Processing transitions through `processin
 to `ready`; parser or source-read failures end in `failed` with
 `DOCUMENT_PARSE_FAILED`. Reprocessing replaces pages for the same version in one
 transaction, so repeated execution does not create duplicate pages.
+
+Each non-empty page is split with the configured recursive character strategy. The
+current settings are explicitly character-based (`CHUNK_SIZE_CHARS` and
+`CHUNK_OVERLAP_CHARS`), not tokenizer counts. Every persisted `DocumentChunk`
+retains Workspace, document, version, page, source filename, parser, strategy,
+sequence, and content-hash metadata. Reprocessing replaces pages and their cascaded
+chunks atomically, preventing duplicate search records in PostgreSQL.

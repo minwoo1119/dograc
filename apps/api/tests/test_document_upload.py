@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.core.config import Settings
 from app.db.base import Base
-from app.db.models.document import Document, DocumentPage
+from app.db.models.document import Document, DocumentChunk, DocumentPage
 from app.db.models.workspace import Workspace
 from app.documents.errors import DocumentProcessingError
 from app.documents.service import DocumentService
@@ -185,18 +185,20 @@ def test_process_document_persists_pages_idempotently(tmp_path: Path) -> None:
             headers={"X-User-ID": str(user_id)},
         )
 
-        async def load_pages() -> tuple[int, str]:
+        async def load_pages() -> tuple[int, str, int]:
             async with client.app.state.session_factory() as session:
                 count = await session.scalar(select(func.count()).select_from(DocumentPage))
                 text = await session.scalar(select(DocumentPage.text))
-                return int(count or 0), text or ""
+                chunk_count = await session.scalar(select(func.count()).select_from(DocumentChunk))
+                return int(count or 0), text or "", int(chunk_count or 0)
 
-        page_count, page_text = asyncio.run(load_pages())
+        page_count, page_text, chunk_count = asyncio.run(load_pages())
 
     assert first.status_code == 200
     assert second.status_code == 200
     assert second.json()["status"] == "ready"
     assert (page_count, page_text) == (1, "페이지 내용")
+    assert chunk_count == 1
 
 
 def test_process_document_records_parse_failure(tmp_path: Path) -> None:

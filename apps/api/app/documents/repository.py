@@ -4,7 +4,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models.document import Document, DocumentPage, DocumentVersion
+from app.db.models.document import Document, DocumentChunk, DocumentPage, DocumentVersion
 from app.db.models.workspace import Workspace
 
 
@@ -38,6 +38,9 @@ class DocumentRepository:
         version: DocumentVersion,
         pages: list[DocumentPage],
     ) -> None:
+        await self._session.execute(
+            delete(DocumentChunk).where(DocumentChunk.document_version_id == version.id)
+        )
         await self._session.execute(
             delete(DocumentPage).where(DocumentPage.document_version_id == version.id)
         )
