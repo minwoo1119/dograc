@@ -7,11 +7,13 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.core.config import Settings
 from app.db.base import Base
+from app.db.models.document import Document, DocumentPage
 from app.db.models.workspace import Workspace
 from app.documents.errors import DocumentProcessingError
 from app.documents.service import DocumentService
@@ -22,6 +24,9 @@ class MemoryFileStorage:
     def __init__(self) -> None:
         self.objects: dict[str, tuple[bytes, str]] = {}
         self.deleted_keys: list[str] = []
+
+    async def get(self, *, object_key: str) -> bytes:
+        return self.objects[object_key][0]
 
     async def put(self, *, object_key: str, content: bytes, media_type: str) -> None:
         self.objects[object_key] = (content, media_type)
@@ -158,3 +163,85 @@ async def test_upload_deletes_object_when_database_commit_fails(tmp_path: Path) 
     await engine.dispose()
     assert storage.objects == {}
     assert len(storage.deleted_keys) == 1
+
+
+def test_process_document_persists_pages_idempotently(tmp_path: Path) -> None:
+    storage = MemoryFileStorage()
+    user_id = uuid.uuid4()
+    with document_client(tmp_path / "process.db", storage) as client:
+        workspace_id = create_workspace(client, user_id)
+        uploaded = client.post(
+            f"/api/v1/workspaces/{workspace_id}/documents",
+            headers={"X-User-ID": str(user_id)},
+            files={"file": ("notes.txt", "페이지 내용".encode(), "text/plain")},
+        )
+        document_id = uploaded.json()["id"]
+        first = client.post(
+            f"/api/v1/documents/{document_id}/process",
+            headers={"X-User-ID": str(user_id)},
+        )
+        second = client.post(
+            f"/api/v1/documents/{document_id}/process",
+            headers={"X-User-ID": str(user_id)},
+        )
+
+        async def load_pages() -> tuple[int, str]:
+            async with client.app.state.session_factory() as session:
+                count = await session.scalar(select(func.count()).select_from(DocumentPage))
+                text = await session.scalar(select(DocumentPage.text))
+                return int(count or 0), text or ""
+
+        page_count, page_text = asyncio.run(load_pages())
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.json()["status"] == "ready"
+    assert (page_count, page_text) == (1, "페이지 내용")
+
+
+def test_process_document_records_parse_failure(tmp_path: Path) -> None:
+    storage = MemoryFileStorage()
+    user_id = uuid.uuid4()
+    with document_client(tmp_path / "parse-failure.db", storage) as client:
+        workspace_id = create_workspace(client, user_id)
+        uploaded = client.post(
+            f"/api/v1/workspaces/{workspace_id}/documents",
+            headers={"X-User-ID": str(user_id)},
+            files={"file": ("broken.pdf", b"%PDF-corrupt", "application/pdf")},
+        )
+        document_id = uploaded.json()["id"]
+        response = client.post(
+            f"/api/v1/documents/{document_id}/process",
+            headers={"X-User-ID": str(user_id)},
+        )
+
+        async def load_status() -> tuple[str, str | None]:
+            async with client.app.state.session_factory() as session:
+                document = await session.get(Document, uuid.UUID(document_id))
+                assert document is not None
+                return document.status.value, document.failure_code
+
+        stored_status = asyncio.run(load_status())
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "DOCUMENT_PARSE_FAILED"
+    assert stored_status == ("failed", "DOCUMENT_PARSE_FAILED")
+
+
+def test_process_document_hides_another_owners_document(tmp_path: Path) -> None:
+    storage = MemoryFileStorage()
+    owner_id = uuid.uuid4()
+    with document_client(tmp_path / "process-owner.db", storage) as client:
+        workspace_id = create_workspace(client, owner_id)
+        uploaded = client.post(
+            f"/api/v1/workspaces/{workspace_id}/documents",
+            headers={"X-User-ID": str(owner_id)},
+            files={"file": ("notes.txt", b"private", "text/plain")},
+        )
+        response = client.post(
+            f"/api/v1/documents/{uploaded.json()['id']}/process",
+            headers={"X-User-ID": str(uuid.uuid4())},
+        )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "DOCUMENT_NOT_FOUND"

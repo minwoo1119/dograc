@@ -24,3 +24,21 @@ class DocumentProcessingError(ApplicationError):
             message="The document could not be stored.",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+class DocumentNotFoundError(ApplicationError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="DOCUMENT_NOT_FOUND",
+            message="Document was not found.",
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+
+class DocumentParseFailedError(ApplicationError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="DOCUMENT_PARSE_FAILED",
+            message="The document could not be parsed.",
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        )

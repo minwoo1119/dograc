@@ -1,6 +1,11 @@
-from sqlalchemy.ext.asyncio import AsyncSession
+import uuid
 
-from app.db.models.document import Document
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.db.models.document import Document, DocumentPage, DocumentVersion
+from app.db.models.workspace import Workspace
 
 
 class DocumentRepository:
@@ -12,3 +17,29 @@ class DocumentRepository:
         await self._session.flush()
         await self._session.refresh(document)
         return document
+
+    async def get_for_owner(
+        self,
+        *,
+        document_id: uuid.UUID,
+        owner_id: uuid.UUID,
+    ) -> Document | None:
+        statement = (
+            select(Document)
+            .join(Workspace, Workspace.id == Document.workspace_id)
+            .where(Document.id == document_id, Workspace.owner_id == owner_id)
+            .options(selectinload(Document.versions).selectinload(DocumentVersion.pages))
+        )
+        return await self._session.scalar(statement)
+
+    async def replace_pages(
+        self,
+        *,
+        version: DocumentVersion,
+        pages: list[DocumentPage],
+    ) -> None:
+        await self._session.execute(
+            delete(DocumentPage).where(DocumentPage.document_version_id == version.id)
+        )
+        version.pages = pages
+        await self._session.flush()

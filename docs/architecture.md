@@ -63,3 +63,10 @@ stores the immutable original and commits `Document` plus `DocumentVersion` meta
 If the database commit fails after object creation, the service rolls back and
 attempts a compensating object deletion. Storage provider exceptions are converted
 to stable application errors without returning credential or endpoint details.
+
+Document processing reads the immutable original through `FileStorage`, selects a
+parser by trusted media type, and persists one `DocumentPage` per source page with
+the parser name and SHA-256 text hash. Processing transitions through `processing`
+to `ready`; parser or source-read failures end in `failed` with
+`DOCUMENT_PARSE_FAILED`. Reprocessing replaces pages for the same version in one
+transaction, so repeated execution does not create duplicate pages.
