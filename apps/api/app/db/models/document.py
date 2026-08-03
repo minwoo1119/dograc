@@ -131,3 +131,54 @@ class DocumentPage(Base):
     )
 
     document_version: Mapped[DocumentVersion] = relationship(back_populates="pages")
+    chunks: Mapped[list["DocumentChunk"]] = relationship(
+        back_populates="document_page",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="DocumentChunk.chunk_index",
+    )
+
+
+class DocumentChunk(Base):
+    __tablename__ = "document_chunks"
+    __table_args__ = (
+        UniqueConstraint(
+            "document_version_id",
+            "chunk_index",
+            name="uq_document_chunks_document_version_id_chunk_index",
+        ),
+        Index("ix_document_chunks_workspace_id_document_id", "workspace_id", "document_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    document_version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("document_versions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    document_page_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("document_pages.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    source_file_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    page_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    section_title: Mapped[str | None] = mapped_column(String(500))
+    chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    parser_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    chunking_strategy: Mapped[str] = mapped_column(String(100), nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    document_page: Mapped[DocumentPage] = relationship(back_populates="chunks")
