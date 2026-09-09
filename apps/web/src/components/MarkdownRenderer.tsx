@@ -8,10 +8,14 @@ interface MarkdownRendererProps {
   content: string;
   className?: string;
   isUser?: boolean;
+  onCitationClick?: (fileName: string, page: string) => void;
 }
 
 // [파일명, p.숫자] 패턴을 감지하여 KDS 인라인 뱃지로 변환
-function parseCitations(text: string): ReactNode[] {
+function parseCitations(
+  text: string,
+  onCitationClick?: (fileName: string, page: string) => void
+): ReactNode[] {
   const citationRegex = /\[([^\]]+),\s*(p\.\d+)\]/g;
   const parts: ReactNode[] = [];
   let lastIndex = 0;
@@ -31,14 +35,16 @@ function parseCitations(text: string): ReactNode[] {
 
     // 인라인 인용 뱃지
     parts.push(
-      <span
+      <button
+        type="button"
         key={`citation-${start}`}
-        className="inline-flex items-center space-x-1 px-1.5 py-0.2 mx-0.5 rounded text-[10.5px] font-semibold bg-kds-blue-50 text-kds-blue-700 border border-kds-blue-200 select-none align-baseline shadow-xs"
-        title={`${fileName} (${page})`}
+        onClick={() => onCitationClick?.(fileName, page)}
+        className="inline-flex items-center space-x-1 px-1.5 py-0.2 mx-0.5 rounded text-[10.5px] font-semibold bg-kds-blue-50 hover:bg-kds-blue-100 text-kds-blue-700 hover:text-kds-blue-900 border border-kds-blue-200 hover:border-kds-blue-300 transition-colors select-none align-baseline shadow-xs cursor-pointer"
+        title={`${fileName} (${page}) - 클릭하여 원문 근거 확인`}
       >
         <span className="truncate max-w-[140px]">{fileName}</span>
         <span className="text-kds-blue-900 font-mono text-[10px]">{page}</span>
-      </span>
+      </button>
     );
 
     lastIndex = end;
@@ -52,16 +58,24 @@ function parseCitations(text: string): ReactNode[] {
 }
 
 // React 자식 요소들 중 문자열을 찾아 인라인 인용 변환
-function processChildren(children: ReactNode): ReactNode {
+function processChildren(
+  children: ReactNode,
+  onCitationClick?: (fileName: string, page: string) => void
+): ReactNode {
   return React.Children.map(children, (child) => {
     if (typeof child === "string") {
-      return parseCitations(child);
+      return parseCitations(child, onCitationClick);
     }
     return child;
   });
 }
 
-export function MarkdownRenderer({ content, className = "", isUser = false }: MarkdownRendererProps) {
+export function MarkdownRenderer({
+  content,
+  className = "",
+  isUser = false,
+  onCitationClick,
+}: MarkdownRendererProps) {
   return (
     <div className={`markdown-content text-xs sm:text-sm leading-relaxed ${className}`}>
       <ReactMarkdown
@@ -70,14 +84,14 @@ export function MarkdownRenderer({ content, className = "", isUser = false }: Ma
           p({ children }) {
             return (
               <p className="mb-2 last:mb-0 leading-relaxed text-kds-gray-800">
-                {isUser ? children : processChildren(children)}
+                {isUser ? children : processChildren(children, onCitationClick)}
               </p>
             );
           },
           li({ children }) {
             return (
               <li className="leading-relaxed text-kds-gray-800">
-                {isUser ? children : processChildren(children)}
+                {isUser ? children : processChildren(children, onCitationClick)}
               </li>
             );
           },
@@ -153,7 +167,7 @@ export function MarkdownRenderer({ content, className = "", isUser = false }: Ma
             return <th className="px-3 py-1.5 text-kds-gray-800 font-semibold">{children}</th>;
           },
           td({ children }) {
-            return <td className="px-3 py-1.5 text-kds-gray-700">{isUser ? children : processChildren(children)}</td>;
+            return <td className="px-3 py-1.5 text-kds-gray-700">{isUser ? children : processChildren(children, onCitationClick)}</td>;
           },
           strong({ children }) {
             return <strong className="font-semibold text-kds-gray-900">{children}</strong>;

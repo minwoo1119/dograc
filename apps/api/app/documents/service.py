@@ -130,7 +130,7 @@ class DocumentService:
                 media_type=validated.media_type,
             )
         except FileStorageError as exc:
-            raise DocumentProcessingError from exc
+            raise DocumentProcessingError("파일 저장소(MinIO)에 문서 원본을 업로드하지 못했습니다.") from exc
 
         document = Document(
             id=document_id,
@@ -160,5 +160,5 @@ class DocumentService:
                     "Failed to compensate object upload",
                     extra={"object_key": object_key},
                 )
-            raise DocumentProcessingError from exc
+            raise DocumentProcessingError("데이터베이스에 문서 정보를 저장하지 못했습니다.") from exc
         return document

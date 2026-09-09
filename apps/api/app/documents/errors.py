@@ -18,10 +18,10 @@ class DocumentUploadValidationError(ApplicationError):
 
 
 class DocumentProcessingError(ApplicationError):
-    def __init__(self) -> None:
+    def __init__(self, message: str = "문서를 저장하거나 색인하는 과정에서 오류가 발생했습니다.") -> None:
         super().__init__(
             code="DOCUMENT_PROCESSING_FAILED",
-            message="The document could not be stored.",
+            message=message,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 

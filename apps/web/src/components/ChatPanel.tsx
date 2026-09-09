@@ -7,6 +7,22 @@ import { useAppStore } from "@/lib/store";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { Plus, Trash2 } from "lucide-react";
 
+// 답변 본문에서 고유한 [파일명, p.숫자] 출처 추출
+function extractSources(content: string): Array<{ fileName: string; page: string }> {
+  const regex = /\[([^\]]+),\s*(p\.\d+)\]/g;
+  const map = new Map<string, { fileName: string; page: string }>();
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(content)) !== null) {
+    const fileName = match[1].trim();
+    const page = match[2].trim();
+    const key = `${fileName}#${page}`;
+    if (!map.has(key)) {
+      map.set(key, { fileName, page });
+    }
+  }
+  return Array.from(map.values());
+}
+
 export function ChatPanel() {
   const queryClient = useQueryClient();
   const {
@@ -15,6 +31,9 @@ export function ChatPanel() {
     currentConversationId,
     setCurrentConversationId,
     setActiveTraceId,
+    selectedModelType,
+    localOllamaEndpoint,
+    localOllamaModel,
   } = useAppStore();
 
   const [inputContent, setInputContent] = useState("");
@@ -91,7 +110,16 @@ export function ChatPanel() {
   // 메시지 전송 Mutation
   const sendMessageMutation = useMutation({
     mutationFn: ({ convId, content }: { convId: string; content: string }) => {
-      return api.sendMessage(userId, convId, content);
+      const options =
+        selectedModelType === "local"
+          ? {
+              model_name: localOllamaModel,
+              endpoint_url:
+                localOllamaEndpoint.replace(/\/v1\/?$/, "").replace(/\/$/, "") +
+                "/v1",
+            }
+          : undefined;
+      return api.sendMessage(userId, convId, content, options);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -291,19 +319,66 @@ export function ChatPanel() {
                         : "bg-white border-kds-gray-300 text-kds-gray-900 rounded-tl-none font-normal shadow-xs"
                     }`}
                   >
-                    <MarkdownRenderer content={msg.content} isUser={isUser} />
+                    <MarkdownRenderer
+                      content={msg.content}
+                      isUser={isUser}
+                      onCitationClick={() => {
+                        if (msg.trace_id) setActiveTraceId(msg.trace_id);
+                      }}
+                    />
 
-                    {/* 어시스턴트 메시지 하단 Trace 액션 */}
-                    {!isUser && msg.trace_id && (
-                      <div className="mt-2.5 pt-2 border-t border-kds-gray-200 flex items-center justify-end">
-                        <button
-                          onClick={() => setActiveTraceId(msg.trace_id!)}
-                          className="text-[11px] font-medium text-kds-blue-700 hover:text-kds-blue-800 hover:underline transition-colors"
-                        >
-                          실행 Trace 분석 보기 →
-                        </button>
-                      </div>
-                    )}
+                    {/* 어시스턴트 메시지 하단: 참고한 출처 카드 섹션 */}
+                    {!isUser && (() => {
+                      const sources = extractSources(msg.content);
+                      return (
+                        <div className="mt-3 pt-2.5 border-t border-kds-gray-200 space-y-2">
+                          {sources.length > 0 && (
+                            <div>
+                              <div className="flex items-center justify-between text-[11px] font-semibold text-kds-gray-500 mb-1.5">
+                                <span>참고한 문서 출처 ({sources.length}개)</span>
+                                {msg.trace_id && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveTraceId(msg.trace_id!)}
+                                    className="text-kds-blue-700 hover:text-kds-blue-800 hover:underline text-[11px] font-medium transition-colors"
+                                  >
+                                    원문 발췌문 및 점수 보기 →
+                                  </button>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {sources.map((src, i) => (
+                                  <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() => msg.trace_id && setActiveTraceId(msg.trace_id)}
+                                    className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-kds-gray-100 hover:bg-kds-blue-50 border border-kds-gray-200 hover:border-kds-blue-300 text-kds-gray-800 hover:text-kds-blue-800 text-xs transition-colors cursor-pointer text-left"
+                                    title="클릭하여 해당 출처의 원문 발췌문 확인"
+                                  >
+                                    <span className="font-medium truncate max-w-[180px]">{src.fileName}</span>
+                                    <span className="font-mono text-kds-blue-800 bg-kds-blue-100/70 px-1 py-0.2 rounded text-[10.5px]">
+                                      {src.page}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {sources.length === 0 && msg.trace_id && (
+                            <div className="flex items-center justify-end">
+                              <button
+                                type="button"
+                                onClick={() => setActiveTraceId(msg.trace_id!)}
+                                className="text-[11px] font-medium text-kds-blue-700 hover:text-kds-blue-800 hover:underline transition-colors"
+                              >
+                                답변 근거 및 출처 분석 보기 →
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );
@@ -430,8 +505,21 @@ export function ChatPanel() {
             </button>
           </div>
 
-          <div className="hidden sm:block text-[11px] text-kds-gray-400">
-            Enter 전송 · Shift+Enter 줄바꿈
+          <div className="flex items-center space-x-2 text-[11px] text-kds-gray-400">
+            <span className="hidden md:inline">Enter 전송 · Shift+Enter 줄바꿈</span>
+            <span className="hidden sm:inline">•</span>
+            <span
+              className={`px-1.5 py-0.2 rounded text-[10.5px] font-medium ${
+                selectedModelType === "local"
+                  ? "bg-kds-blue-50 text-kds-blue-700 border border-kds-blue-200"
+                  : "bg-kds-gray-900 text-white"
+              }`}
+              title="현재 답변 생성에 사용되는 모델"
+            >
+              {selectedModelType === "local"
+                ? `로컬: ${localOllamaModel}`
+                : "서버: Qwen 2.5 32B (PRO)"}
+            </span>
           </div>
         </div>
 

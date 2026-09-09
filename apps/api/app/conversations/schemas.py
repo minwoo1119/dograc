@@ -13,6 +13,8 @@ class ConversationCreate(BaseModel):
 
 class MessageCreate(BaseModel):
     content: str = Field(min_length=1)
+    model_name: str | None = None
+    endpoint_url: str | None = None
 
 
 class MessageResponse(BaseModel):

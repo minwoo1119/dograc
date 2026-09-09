@@ -154,5 +154,15 @@ class DocumentProcessingService:
                 failed_document.status = DocumentStatus.FAILED
                 failed_document.failure_code = "DOCUMENT_PROCESSING_FAILED"
                 await self._session.commit()
-            raise DocumentProcessingError from exc
+
+            if isinstance(exc, EmbeddingModelError):
+                detail_msg = "문서 임베딩 벡터 생성(Embedding) 중 오류가 발생했습니다."
+            elif isinstance(exc, VectorStoreError):
+                detail_msg = "벡터 데이터베이스(Qdrant) 색인 중 오류가 발생했습니다."
+            elif isinstance(exc, SQLAlchemyError):
+                detail_msg = "문서 페이지 및 청크 정보를 데이터베이스에 기록하지 못했습니다."
+            else:
+                detail_msg = "문서 색인 처리 중 오류가 발생했습니다."
+
+            raise DocumentProcessingError(detail_msg) from exc
         return document

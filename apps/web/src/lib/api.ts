@@ -193,11 +193,20 @@ export const api = {
       method: "DELETE",
     }),
 
-  sendMessage: (userId: string, conversationId: string, content: string) =>
+  sendMessage: (
+    userId: string,
+    conversationId: string,
+    content: string,
+    options?: { model_name?: string; endpoint_url?: string }
+  ) =>
     request<Message>(`/conversations/${conversationId}/messages`, userId, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({
+        content,
+        model_name: options?.model_name,
+        endpoint_url: options?.endpoint_url,
+      }),
     }),
 
   // Trace

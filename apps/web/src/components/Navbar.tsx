@@ -5,8 +5,10 @@ import Image from "next/image";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
-import { Plus, ChevronDown, Trash2 } from "lucide-react";
+import { Plus, ChevronDown, Trash2, Settings2, Sparkles } from "lucide-react";
 import { AuthModal } from "@/components/AuthModal";
+import { OllamaGuideModal } from "@/components/OllamaGuideModal";
+import { ProPricingModal } from "@/components/ProPricingModal";
 
 export function Navbar() {
   const queryClient = useQueryClient();
@@ -16,11 +18,17 @@ export function Navbar() {
     logout,
     currentWorkspaceId,
     setCurrentWorkspaceId,
+    selectedModelType,
+    setSelectedModelType,
+    localOllamaModel,
+    isProSubscriber,
   } = useAppStore();
 
   const [isCreating, setIsCreating] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showOllamaGuide, setShowOllamaGuide] = useState(false);
+  const [showPricingModal, setShowPricingModal] = useState(false);
 
   const { data: workspaces = [] } = useQuery({
     queryKey: ["workspaces", userId],
@@ -116,8 +124,53 @@ export function Navbar() {
                 className="h-10 w-10 flex items-center justify-center text-kds-gray-400 hover:text-kds-red-500 hover:bg-kds-red-50 rounded-lg transition-colors"
                 title="워크스페이스 삭제"
               >
-                <Trash2 className="w-4 h-4" strokeWidth={1.75} />
+                <Trash2 className="w-4 h-4 stroke-[1.75]" />
               </button>
+            )}
+          </div>
+
+          <div className="h-5 w-[1px] bg-kds-gray-300 hidden md:block" />
+
+          {/* 모델 선택 탭 (로컬 Ollama vs 서버 PRO) */}
+          <div className="hidden sm:flex items-center space-x-1.5">
+            <div className="relative">
+              <select
+                value={selectedModelType}
+                onChange={(e) => {
+                  const val = e.target.value as "local" | "server";
+                  if (val === "server" && !isProSubscriber) {
+                    setShowPricingModal(true);
+                  } else {
+                    setSelectedModelType(val);
+                  }
+                }}
+                className="appearance-none bg-kds-gray-50 border border-kds-gray-300 text-kds-gray-900 text-xs sm:text-sm font-medium rounded-lg pl-3.5 pr-8 h-10 hover:border-kds-gray-400 focus:border-kds-blue-700 focus:bg-white focus:outline-none transition-colors cursor-pointer min-w-[210px]"
+              >
+                <option value="local">
+                  내 로컬 Ollama ({localOllamaModel}) · 무료
+                </option>
+                <option value="server">
+                  서버 전용 GPU 모델 (32B) · PRO
+                </option>
+              </select>
+              <ChevronDown className="w-4 h-4 text-kds-gray-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.75} />
+            </div>
+
+            {/* Ollama 모델 세팅 가이드 버튼 */}
+            <button
+              onClick={() => setShowOllamaGuide(true)}
+              className="h-10 px-2.5 rounded-lg border border-kds-gray-300 bg-kds-gray-50 hover:bg-kds-gray-100 text-kds-gray-700 text-xs font-medium transition-colors flex items-center space-x-1"
+              title="내 컴퓨터 Ollama 모델 설정 및 설치 가이드"
+            >
+              <Settings2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+              <span className="hidden lg:inline">Ollama 세팅</span>
+            </button>
+
+            {/* 현재 모델 뱃지 */}
+            {selectedModelType === "server" && (
+              <span className="bg-kds-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                PRO
+              </span>
             )}
           </div>
         </div>
@@ -208,6 +261,18 @@ export function Navbar() {
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
+      />
+
+      {/* Ollama 모델 세팅 가이드 모달 */}
+      <OllamaGuideModal
+        isOpen={showOllamaGuide}
+        onClose={() => setShowOllamaGuide(false)}
+      />
+
+      {/* 서버 고성능 모델 PRO 결제/구독 모달 */}
+      <ProPricingModal
+        isOpen={showPricingModal}
+        onClose={() => setShowPricingModal(false)}
       />
     </header>
   );

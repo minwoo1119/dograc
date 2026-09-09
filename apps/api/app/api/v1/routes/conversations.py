@@ -131,13 +131,22 @@ async def send_message(
     vector_store: VectorStoreDependency,
     generation_model: GenerationModelDependency,
 ) -> MessageResponse:
+    active_generation_model = generation_model
+    if payload.model_name or payload.endpoint_url:
+        from app.models.generation import OpenAICompatibleGenerationModel
+        active_generation_model = OpenAICompatibleGenerationModel(
+            model_name=payload.model_name or getattr(generation_model, "model_name", "local-model"),
+            base_url=payload.endpoint_url or getattr(request.app.state.settings, "generation_base_url", "http://localhost:11434/v1"),
+            api_key=getattr(request.app.state.settings, "generation_api_key", None),
+        )
+
     assistant_message, trace = await ConversationService(session).send_message(
         conversation_id=conversation_id,
         owner_id=user_id,
         content=payload.content,
         embedding_model=embedding_model,
         vector_store=vector_store,
-        generation_model=generation_model,
+        generation_model=active_generation_model,
         top_k=request.app.state.settings.max_context_chunks,
     )
     return MessageResponse(
