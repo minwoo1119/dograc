@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
-import { Plus, ChevronDown, Trash2, KeyRound, Check, LogIn, LogOut, User } from "lucide-react";
+import { Plus, ChevronDown, Trash2 } from "lucide-react";
 import { AuthModal } from "@/components/AuthModal";
 
 export function Navbar() {
@@ -139,20 +139,18 @@ export function Navbar() {
               </div>
               <button
                 onClick={() => logout()}
-                className="h-8 px-2.5 rounded border border-kds-gray-300 bg-white hover:bg-kds-gray-100 text-kds-gray-700 text-xs font-medium transition-colors flex items-center space-x-1"
+                className="h-8 px-3 rounded border border-kds-gray-300 bg-white hover:bg-kds-gray-100 text-kds-gray-700 text-xs font-medium transition-colors"
                 title="로그아웃"
               >
-                <LogOut className="w-3.5 h-3.5 stroke-[1.5] text-kds-gray-500" />
-                <span>로그아웃</span>
+                로그아웃
               </button>
             </>
           ) : (
             <button
               onClick={() => setShowAuthModal(true)}
-              className="h-8 px-3 rounded bg-kds-blue-600 hover:bg-kds-blue-800 text-white text-xs font-semibold transition-colors flex items-center space-x-1.5"
+              className="h-8 px-3.5 rounded bg-kds-blue-600 hover:bg-kds-blue-800 text-white text-xs font-semibold transition-colors"
             >
-              <LogIn className="w-3.5 h-3.5 stroke-[1.5]" />
-              <span>로그인</span>
+              로그인
             </button>
           )}
         </div>

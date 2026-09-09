@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
-import { X, Lock, Mail, User, Loader2, AlertCircle, Sparkles } from "lucide-react";
+import { X, AlertCircle } from "lucide-react";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -145,22 +145,19 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-3.5">
+        <form onSubmit={handleSubmit} className="space-y-3">
           {mode === "login" ? (
             <div>
               <label className="block text-[11px] font-medium text-kds-gray-700 mb-1">
-                이메일 또는 사용자명
+                아이디 또는 이메일
               </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={emailOrUsername}
-                  onChange={(e) => setEmailOrUsername(e.target.value)}
-                  placeholder="admin 또는 이메일"
-                  className="w-full h-9 pl-8 pr-3 bg-white border border-kds-gray-300 rounded text-xs text-kds-gray-900 placeholder:text-kds-gray-400 focus:outline-none focus:border-kds-blue-600 focus:ring-1 focus:ring-kds-blue-600 transition-colors"
-                />
-                <User className="w-3.5 h-3.5 text-kds-gray-400 absolute left-2.5 top-3 stroke-[1.5]" />
-              </div>
+              <input
+                type="text"
+                value={emailOrUsername}
+                onChange={(e) => setEmailOrUsername(e.target.value)}
+                placeholder="admin 또는 이메일 주소"
+                className="w-full h-9 px-3 bg-white border border-kds-gray-300 rounded text-xs text-kds-gray-900 placeholder:text-kds-gray-400 focus:outline-none focus:border-kds-blue-600 focus:ring-1 focus:ring-kds-blue-600 transition-colors"
+              />
             </div>
           ) : (
             <>
@@ -168,31 +165,25 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 <label className="block text-[11px] font-medium text-kds-gray-700 mb-1">
                   이메일 주소
                 </label>
-                <div className="relative">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@example.com"
-                    className="w-full h-9 pl-8 pr-3 bg-white border border-kds-gray-300 rounded text-xs text-kds-gray-900 placeholder:text-kds-gray-400 focus:outline-none focus:border-kds-blue-600 focus:ring-1 focus:ring-kds-blue-600 transition-colors"
-                  />
-                  <Mail className="w-3.5 h-3.5 text-kds-gray-400 absolute left-2.5 top-3 stroke-[1.5]" />
-                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="w-full h-9 px-3 bg-white border border-kds-gray-300 rounded text-xs text-kds-gray-900 placeholder:text-kds-gray-400 focus:outline-none focus:border-kds-blue-600 focus:ring-1 focus:ring-kds-blue-600 transition-colors"
+                />
               </div>
               <div>
                 <label className="block text-[11px] font-medium text-kds-gray-700 mb-1">
                   사용자명
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="영문, 숫자 2자 이상"
-                    className="w-full h-9 pl-8 pr-3 bg-white border border-kds-gray-300 rounded text-xs text-kds-gray-900 placeholder:text-kds-gray-400 focus:outline-none focus:border-kds-blue-600 focus:ring-1 focus:ring-kds-blue-600 transition-colors"
-                  />
-                  <User className="w-3.5 h-3.5 text-kds-gray-400 absolute left-2.5 top-3 stroke-[1.5]" />
-                </div>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="영문, 숫자 2자 이상"
+                  className="w-full h-9 px-3 bg-white border border-kds-gray-300 rounded text-xs text-kds-gray-900 placeholder:text-kds-gray-400 focus:outline-none focus:border-kds-blue-600 focus:ring-1 focus:ring-kds-blue-600 transition-colors"
+                />
               </div>
             </>
           )}
@@ -201,41 +192,37 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             <label className="block text-[11px] font-medium text-kds-gray-700 mb-1">
               비밀번호
             </label>
-            <div className="relative">
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="비밀번호 입력"
-                className="w-full h-9 pl-8 pr-3 bg-white border border-kds-gray-300 rounded text-xs text-kds-gray-900 placeholder:text-kds-gray-400 focus:outline-none focus:border-kds-blue-600 focus:ring-1 focus:ring-kds-blue-600 transition-colors"
-              />
-              <Lock className="w-3.5 h-3.5 text-kds-gray-400 absolute left-2.5 top-3 stroke-[1.5]" />
-            </div>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="비밀번호 입력"
+              className="w-full h-9 px-3 bg-white border border-kds-gray-300 rounded text-xs text-kds-gray-900 placeholder:text-kds-gray-400 focus:outline-none focus:border-kds-blue-600 focus:ring-1 focus:ring-kds-blue-600 transition-colors"
+            />
           </div>
 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full h-9 bg-kds-blue-600 hover:bg-kds-blue-800 disabled:bg-kds-gray-300 text-white text-xs font-semibold rounded transition-colors flex items-center justify-center space-x-1 mt-2"
+            className="w-full h-9 bg-kds-blue-600 hover:bg-kds-blue-800 disabled:bg-kds-gray-300 text-white text-xs font-semibold rounded transition-colors flex items-center justify-center mt-2"
           >
             {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>처리 중...</span>
             ) : mode === "login" ? (
               <span>로그인하기</span>
             ) : (
-              <span>회원가입 완료하기</span>
+              <span>회원가입 완료</span>
             )}
           </button>
         </form>
 
-        {/* 빠른 체험용 데모 계정 안내 */}
-        <div className="mt-4 pt-4 border-t border-kds-gray-200">
+        {/* 데모 계정 자동 채우기 버튼 */}
+        <div className="mt-4 pt-3.5 border-t border-kds-gray-200">
           <button
             type="button"
             onClick={handleFillDemo}
-            className="w-full h-8 px-3 bg-kds-gray-50 hover:bg-kds-gray-100 border border-kds-gray-300 rounded text-[11px] text-kds-gray-700 font-medium transition-colors flex items-center justify-center space-x-1.5"
+            className="w-full h-8 px-3 bg-kds-gray-50 hover:bg-kds-gray-100 border border-kds-gray-300 rounded text-[11px] text-kds-gray-700 font-medium transition-colors flex items-center justify-center"
           >
-            <Sparkles className="w-3 h-3 text-kds-blue-600 stroke-[1.5]" />
             <span>데모 관리자 계정 채우기 (admin)</span>
           </button>
         </div>

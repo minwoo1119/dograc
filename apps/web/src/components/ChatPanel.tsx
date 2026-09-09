@@ -142,10 +142,9 @@ export function ChatPanel() {
   if (!currentWorkspaceId) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-white">
-        <MessageSquare className="w-8 h-8 text-kds-gray-400 mb-2 stroke-[1.5]" />
-        <p className="text-xs font-medium text-kds-gray-700">대화를 시작할 준비가 되었습니다</p>
-        <p className="text-[11px] text-kds-gray-500 mt-0.5">
-          워크스페이스를 선택하고 질문을 시작해 보세요.
+        <p className="text-xs font-semibold text-kds-gray-800">대화 세션 준비 완료</p>
+        <p className="text-[11px] text-kds-gray-500 mt-1">
+          워크스페이스를 선택하고 문서에 관한 질문을 시작해 보세요.
         </p>
       </div>
     );
@@ -192,20 +191,16 @@ export function ChatPanel() {
 
         <button
           onClick={() => createConversationMutation.mutate()}
-          className="inline-flex items-center space-x-1 h-8 px-2.5 rounded border border-kds-gray-300 bg-white hover:bg-kds-gray-50 text-xs font-medium text-kds-gray-700 transition-colors flex-shrink-0"
+          className="h-7 px-2.5 rounded border border-kds-gray-300 bg-white hover:bg-kds-gray-50 text-xs font-medium text-kds-gray-700 transition-colors flex-shrink-0"
         >
-          <Plus className="w-3.5 h-3.5 stroke-[1.5]" />
-          <span>새 대화</span>
+          + 새 대화
         </button>
       </div>
 
       {/* 메시지 영역 (Reading-First Layout) */}
       <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-6 py-6 space-y-5">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto">
-            <div className="w-10 h-10 rounded bg-white border border-kds-gray-300 flex items-center justify-center mb-3 shadow-subtle">
-              <FileText className="w-5 h-5 text-kds-blue-700 stroke-[1.5]" />
-            </div>
+          <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto p-4">
             <h3 className="text-sm font-bold text-kds-gray-900">
               문서 기반 질의응답
             </h3>
@@ -241,13 +236,12 @@ export function ChatPanel() {
 
                   {/* 어시스턴트 메시지 하단 Trace 액션 */}
                   {!isUser && msg.trace_id && (
-                    <div className="mt-3 pt-2.5 border-t border-kds-gray-200 flex items-center justify-end">
+                    <div className="mt-2.5 pt-2 border-t border-kds-gray-200 flex items-center justify-end">
                       <button
                         onClick={() => setActiveTraceId(msg.trace_id!)}
-                        className="inline-flex items-center space-x-1 text-[11px] font-medium text-kds-blue-700 hover:text-kds-blue-800 transition-colors"
+                        className="text-[11px] font-medium text-kds-blue-700 hover:text-kds-blue-800 hover:underline transition-colors"
                       >
-                        <SearchCode className="w-3.5 h-3.5" strokeWidth={1.75} />
-                        <span>근거 Trace 보기</span>
+                        실행 Trace 분석 보기 →
                       </button>
                     </div>
                   )}

@@ -7,14 +7,9 @@ import { useAppStore } from "@/lib/store";
 import { DocumentStatus } from "@/types";
 import {
   FileText,
-  FileUp,
   Play,
   Trash2,
-  CheckCircle2,
-  Clock,
   AlertCircle,
-  Loader2,
-  FolderOpen,
 } from "lucide-react";
 
 export function DocumentPanel() {
@@ -82,30 +77,26 @@ export function DocumentPanel() {
     switch (status) {
       case "ready":
         return (
-          <span className="inline-flex items-center space-x-1 h-[22px] px-2 rounded text-[11px] font-medium bg-kds-green-100 text-kds-green-700">
-            <CheckCircle2 className="w-3 h-3" strokeWidth={2} />
-            <span>색인 완료</span>
+          <span className="inline-flex items-center h-[22px] px-2 rounded text-[11px] font-medium bg-kds-green-100 text-kds-green-700">
+            색인 완료
           </span>
         );
       case "processing":
         return (
-          <span className="inline-flex items-center space-x-1 h-[22px] px-2 rounded text-[11px] font-medium bg-kds-blue-100 text-kds-blue-700">
-            <Loader2 className="w-3 h-3 animate-spin" strokeWidth={2} />
-            <span>처리 중</span>
+          <span className="inline-flex items-center h-[22px] px-2 rounded text-[11px] font-medium bg-kds-blue-50 text-kds-blue-700 border border-kds-blue-200">
+            처리 중
           </span>
         );
       case "uploaded":
         return (
-          <span className="inline-flex items-center space-x-1 h-[22px] px-2 rounded text-[11px] font-medium bg-kds-gray-100 text-kds-gray-700">
-            <Clock className="w-3 h-3" strokeWidth={2} />
-            <span>대기 중</span>
+          <span className="inline-flex items-center h-[22px] px-2 rounded text-[11px] font-medium bg-kds-gray-100 text-kds-gray-700">
+            대기 중
           </span>
         );
       case "failed":
         return (
-          <span className="inline-flex items-center space-x-1 h-[22px] px-2 rounded text-[11px] font-medium bg-kds-red-100 text-kds-red-500">
-            <AlertCircle className="w-3 h-3" strokeWidth={2} />
-            <span>실패</span>
+          <span className="inline-flex items-center h-[22px] px-2 rounded text-[11px] font-medium bg-kds-red-100 text-kds-red-500">
+            실패
           </span>
         );
     }
@@ -114,12 +105,11 @@ export function DocumentPanel() {
   if (!currentWorkspaceId) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-white">
-        <FolderOpen className="w-8 h-8 text-kds-gray-400 mb-2 stroke-[1.5]" />
-        <p className="text-xs font-medium text-kds-gray-700">
+        <p className="text-xs font-semibold text-kds-gray-800">
           워크스페이스를 먼저 선택해 주세요
         </p>
-        <p className="text-[11px] text-kds-gray-500 mt-0.5">
-          상단 메뉴에서 작업할 워크스페이스를 고르거나 새로 만들 수 있습니다.
+        <p className="text-[11px] text-kds-gray-500 mt-1 max-w-[200px] leading-relaxed">
+          상단 메뉴에서 워크스페이스를 선택하거나 새로 생성하면 문서를 관리할 수 있습니다.
         </p>
       </div>
     );
@@ -151,10 +141,10 @@ export function DocumentPanel() {
             handleFiles(e.dataTransfer.files);
           }}
           onClick={() => fileInputRef.current?.click()}
-          className={`border border-dashed rounded p-4 text-center cursor-pointer transition-colors ${
+          className={`border border-dashed rounded p-3.5 text-center cursor-pointer transition-colors ${
             dragOver
               ? "border-kds-blue-700 bg-kds-blue-50"
-              : "border-kds-gray-300 hover:border-kds-gray-400 bg-kds-gray-50/70"
+              : "border-kds-gray-300 hover:border-kds-gray-400 bg-kds-gray-50/60"
           }`}
         >
           <input
@@ -166,19 +156,17 @@ export function DocumentPanel() {
           />
 
           {uploadMutation.isPending || processMutation.isPending ? (
-            <div className="flex flex-col items-center py-2 space-y-1.5">
-              <Loader2 className="w-5 h-5 text-kds-blue-700 animate-spin" strokeWidth={2} />
-              <p className="text-xs font-medium text-kds-gray-800">문서를 분석하고 색인하는 중입니다</p>
-              <p className="text-[11px] text-kds-gray-500">페이지 분할 및 벡터 임베딩 생성 중...</p>
+            <div className="py-2 space-y-1">
+              <p className="text-xs font-semibold text-kds-gray-900">문서 분석 및 색인 중...</p>
+              <p className="text-[11px] text-kds-gray-500">페이지 분할과 벡터 임베딩을 생성하고 있습니다</p>
             </div>
           ) : (
-            <div className="flex flex-col items-center py-1.5 space-y-1">
-              <FileUp className="w-5 h-5 text-kds-gray-500 mb-0.5 stroke-[1.5]" />
-              <p className="text-xs font-medium text-kds-gray-900">
-                문서 파일 올리기
+            <div className="py-1 space-y-0.5">
+              <p className="text-xs font-semibold text-kds-gray-900">
+                문서 파일 추가하기
               </p>
               <p className="text-[11px] text-kds-gray-500">
-                PDF 또는 TXT 파일을 여기에 끌어다 놓으세요
+                PDF 또는 TXT 파일을 여기에 끌어다 놓거나 클릭하세요
               </p>
             </div>
           )}

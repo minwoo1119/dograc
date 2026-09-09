@@ -1,9 +1,32 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { DocumentPanel } from "@/components/DocumentPanel";
 import { ChatPanel } from "@/components/ChatPanel";
 import { TraceDrawer } from "@/components/TraceDrawer";
+import { LandingPage } from "@/components/LandingPage";
+import { useAppStore } from "@/lib/store";
 
 export default function Home() {
+  const { currentUser } = useAppStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // 마운트 전 서버 렌더링 시에는 랜딩 페이지를 기본 제공하여 Hydration mismatch 방지
+  if (!mounted) {
+    return <LandingPage />;
+  }
+
+  // 비로그인 사용자: 스크롤 가능한 소개 랜딩 페이지 노출
+  if (!currentUser) {
+    return <LandingPage />;
+  }
+
+  // 로그인 사용자: RAG 2열 작업대 노출
   return (
     <div className="flex flex-col h-full w-full overflow-hidden bg-kds-gray-50">
       <Navbar />
