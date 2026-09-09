@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.api.v1.router import api_router
@@ -91,6 +92,13 @@ def create_app(
         docs_url="/docs" if app_settings.docs_enabled else None,
         redoc_url=None,
         lifespan=lifespan,
+    )
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     application.add_exception_handler(ApplicationError, application_error_handler)
     application.include_router(api_router, prefix="/api/v1")
