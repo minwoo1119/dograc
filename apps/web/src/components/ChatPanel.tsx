@@ -6,12 +6,8 @@ import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import {
   Plus,
-  Send,
   Trash2,
   Loader2,
-  FileText,
-  SearchCode,
-  MessageSquare,
 } from "lucide-react";
 
 export function ChatPanel() {
@@ -284,10 +280,9 @@ export function ChatPanel() {
           <button
             type="submit"
             disabled={!inputContent.trim() || sendMessageMutation.isPending}
-            className="h-10 px-4 bg-kds-blue-600 hover:bg-kds-blue-800 text-white rounded text-xs font-semibold inline-flex items-center space-x-1.5 transition-colors disabled:opacity-40 flex-shrink-0"
+            className="h-10 px-5 bg-kds-blue-600 hover:bg-kds-blue-800 text-white rounded text-xs font-semibold inline-flex items-center justify-center transition-colors disabled:opacity-40 flex-shrink-0"
           >
             <span>전송</span>
-            <Send className="w-3.5 h-3.5 stroke-[1.5]" />
           </button>
         </form>
       </div>

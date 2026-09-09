@@ -35,7 +35,7 @@ export function TraceDrawer() {
         <div className="flex items-center space-x-2">
           <Activity className="w-4 h-4 text-kds-blue-600 stroke-[1.5]" />
           <h3 className="text-xs font-bold text-kds-gray-900 tracking-tight">
-            검색 및 실행 분석 (Trace)
+            파이프라인 실행 분석
           </h3>
         </div>
         <button
@@ -87,7 +87,7 @@ export function TraceDrawer() {
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold text-kds-gray-900 tracking-tight">
-                  참조 문서 청크 (Retrieval)
+                  참조된 문서 청크 (검색 결과)
                 </h4>
                 <span className="text-[11px] font-mono text-kds-gray-500 bg-kds-gray-200 px-1.5 py-0.5 rounded">
                   {trace.retrieved_chunks.length}개
