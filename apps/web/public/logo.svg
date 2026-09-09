@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" fill="none">
+  <!-- Gradient Definition for subtle depth -->
+  <defs>
+    <linearGradient id="dograc-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5B60BD" />
+      <stop offset="100%" stop-color="#474C9E" />
+    </linearGradient>
+  </defs>
+
+  <!-- KDS Indigo Smooth Base Container -->
+  <rect width="32" height="32" rx="7" fill="url(#dograc-bg)" />
+
+  <!-- Crisp Document Sheet -->
+  <path d="M9 7.5C9 6.67157 9.67157 6 10.5 6H18.5L23 10.5V24.5C23 25.3284 22.3284 26 21.5 26H10.5C9.67157 26 9 25.3284 9 24.5V7.5Z" fill="#FFFFFF" />
+
+  <!-- Document Fold Corner -->
+  <path d="M18 6V11H23" fill="none" stroke="#E0E2E6" stroke-width="1.5" stroke-linejoin="round" />
+
+  <!-- Structure & Content Lines -->
+  <line x1="12" y1="13.5" x2="20" y2="13.5" stroke="#5055B1" stroke-width="1.5" stroke-linecap="round" />
+  <line x1="12" y1="17" x2="20" y2="17" stroke="#5055B1" stroke-width="1.5" stroke-linecap="round" />
+  <line x1="12" y1="20.5" x2="16.5" y2="20.5" stroke="#8B919D" stroke-width="1.5" stroke-linecap="round" />
+
+  <!-- Grounded Verification Badge -->
+  <circle cx="22.5" cy="22.5" r="3.5" fill="#4DAC27" stroke="#FFFFFF" stroke-width="1.5" />
+</svg>

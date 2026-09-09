@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
@@ -56,13 +57,23 @@ export function Navbar() {
       <div className="max-w-[1440px] mx-auto h-full px-6 flex items-center justify-between">
         {/* 좌측 브랜드 로고 및 워크스페이스 선택기 */}
         <div className="flex items-center space-x-6">
-          <div className="flex items-center space-x-2">
-            <span className="text-lg font-bold tracking-tight text-kds-gray-900">
-              dograc
-            </span>
-            <span className="text-[11px] font-medium text-kds-blue-700 bg-kds-blue-50 border border-kds-blue-200 px-2 py-0.5 rounded-full">
-              RAG
-            </span>
+          <div className="flex items-center space-x-2.5">
+            <Image
+              src="/logo.svg"
+              alt="dograc 로고"
+              width={28}
+              height={28}
+              className="w-7 h-7 rounded"
+              priority
+            />
+            <div className="flex items-center space-x-1.5">
+              <span className="text-[17px] font-bold tracking-tight text-kds-gray-900 font-sans">
+                dograc
+              </span>
+              <span className="text-[10px] font-semibold text-kds-blue-700 bg-kds-blue-50 border border-kds-blue-200 px-1.5 py-0.5 rounded">
+                RAG
+              </span>
+            </div>
           </div>
 
           <div className="h-4 w-[1px] bg-kds-gray-300" />
