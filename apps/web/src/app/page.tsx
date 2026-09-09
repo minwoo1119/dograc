@@ -28,7 +28,7 @@ export default function Home() {
 
   // 로그인 사용자: RAG 2열 작업대 노출
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden bg-kds-gray-50">
+    <div className="flex flex-col h-screen w-full overflow-hidden bg-kds-gray-50">
       <Navbar />
 
       <main className="flex-1 min-h-0 flex overflow-hidden max-w-[1440px] w-full mx-auto p-3 sm:p-4 md:p-5 gap-3 sm:gap-4">

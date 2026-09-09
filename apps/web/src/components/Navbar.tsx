@@ -54,30 +54,30 @@ export function Navbar() {
   const selectedWorkspace = workspaces.find((ws) => ws.id === currentWorkspaceId);
 
   return (
-    <header className="h-14 bg-white border-b border-kds-gray-300 sticky top-0 z-30 select-none">
+    <header className="h-16 bg-white border-b border-kds-gray-300 sticky top-0 z-30 select-none flex-shrink-0">
       <div className="max-w-[1440px] mx-auto h-full px-6 flex items-center justify-between">
         {/* 좌측 브랜드 로고 및 워크스페이스 선택기 */}
         <div className="flex items-center space-x-6">
-          <div className="flex items-center space-x-2.5">
+          <div className="flex items-center space-x-3">
             <Image
               src="/logo.svg"
               alt="dograc 로고"
-              width={28}
-              height={28}
-              className="w-7 h-7 rounded"
+              width={34}
+              height={34}
+              className="w-[34px] h-[34px] rounded-md"
               priority
             />
-            <div className="flex items-center space-x-1.5">
-              <span className="text-[17px] font-bold tracking-tight text-kds-gray-900 font-sans">
+            <div className="flex items-center space-x-2">
+              <span className="text-lg font-bold tracking-tight text-kds-gray-900 font-sans">
                 dograc
               </span>
-              <span className="text-[10px] font-semibold text-kds-blue-700 bg-kds-blue-50 border border-kds-blue-200 px-1.5 py-0.5 rounded">
+              <span className="text-[11px] font-semibold text-kds-blue-700 bg-kds-blue-50 border border-kds-blue-200 px-2 py-0.5 rounded">
                 RAG
               </span>
             </div>
           </div>
 
-          <div className="h-4 w-[1px] bg-kds-gray-300" />
+          <div className="h-5 w-[1px] bg-kds-gray-300" />
 
           {/* 워크스페이스 선택 셀렉터 */}
           <div className="flex items-center space-x-2">
@@ -85,7 +85,7 @@ export function Navbar() {
               <select
                 value={currentWorkspaceId || ""}
                 onChange={(e) => setCurrentWorkspaceId(e.target.value || null)}
-                className="appearance-none bg-kds-gray-50 border border-kds-gray-300 text-kds-gray-900 text-xs font-medium rounded-lg pl-3 pr-8 py-2 hover:border-kds-gray-400 focus:border-kds-blue-700 focus:bg-white focus:outline-none transition-colors cursor-pointer min-w-[160px]"
+                className="appearance-none bg-kds-gray-50 border border-kds-gray-300 text-kds-gray-900 text-xs sm:text-sm font-medium rounded-lg pl-3.5 pr-9 h-10 hover:border-kds-gray-400 focus:border-kds-blue-700 focus:bg-white focus:outline-none transition-colors cursor-pointer min-w-[180px]"
               >
                 <option value="">워크스페이스 선택</option>
                 {workspaces.map((ws) => (
@@ -94,15 +94,15 @@ export function Navbar() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="w-3.5 h-3.5 text-kds-gray-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.75} />
+              <ChevronDown className="w-4 h-4 text-kds-gray-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" strokeWidth={1.75} />
             </div>
 
             <button
               onClick={() => setIsCreating(true)}
-              className="inline-flex items-center space-x-1 h-8 px-2.5 text-xs font-medium text-kds-gray-700 bg-kds-gray-50 hover:bg-kds-gray-100 border border-kds-gray-300 rounded-lg transition-colors"
+              className="inline-flex items-center space-x-1.5 h-10 px-3.5 text-xs sm:text-sm font-medium text-kds-gray-700 bg-kds-gray-50 hover:bg-kds-gray-100 border border-kds-gray-300 rounded-lg transition-colors"
               title="새 워크스페이스 추가"
             >
-              <Plus className="w-3.5 h-3.5" strokeWidth={1.75} />
+              <Plus className="w-4 h-4" strokeWidth={1.75} />
               <span>새로 만들기</span>
             </button>
 
@@ -113,24 +113,24 @@ export function Navbar() {
                     deleteMutation.mutate(currentWorkspaceId);
                   }
                 }}
-                className="h-8 w-8 flex items-center justify-center text-kds-gray-400 hover:text-kds-red-500 hover:bg-kds-red-50 rounded-lg transition-colors"
+                className="h-10 w-10 flex items-center justify-center text-kds-gray-400 hover:text-kds-red-500 hover:bg-kds-red-50 rounded-lg transition-colors"
                 title="워크스페이스 삭제"
               >
-                <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+                <Trash2 className="w-4 h-4" strokeWidth={1.75} />
               </button>
             )}
           </div>
         </div>
 
         {/* 우측 사용자 세션 정보 */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
           {currentUser ? (
             <>
               <div
-                className="flex items-center space-x-2 bg-kds-gray-50 border border-kds-gray-300 rounded px-2.5 py-1 text-xs"
+                className="flex items-center space-x-2.5 bg-kds-gray-50 border border-kds-gray-300 rounded-lg px-3 h-10 text-xs sm:text-sm"
                 title={`${currentUser.email} (${currentUser.id})`}
               >
-                <div className="w-5 h-5 rounded-full bg-kds-blue-600 text-white flex items-center justify-center text-[10px] font-bold select-none">
+                <div className="w-6 h-6 rounded-full bg-kds-blue-600 text-white flex items-center justify-center text-[11px] font-bold select-none">
                   {currentUser.username[0]?.toUpperCase() || "U"}
                 </div>
                 <span className="font-semibold text-kds-gray-900">
@@ -139,7 +139,7 @@ export function Navbar() {
               </div>
               <button
                 onClick={() => logout()}
-                className="h-8 px-3 rounded border border-kds-gray-300 bg-white hover:bg-kds-gray-100 text-kds-gray-700 text-xs font-medium transition-colors"
+                className="h-10 px-4 rounded-lg border border-kds-gray-300 bg-white hover:bg-kds-gray-100 text-kds-gray-700 text-xs sm:text-sm font-medium transition-colors"
                 title="로그아웃"
               >
                 로그아웃
@@ -148,7 +148,7 @@ export function Navbar() {
           ) : (
             <button
               onClick={() => setShowAuthModal(true)}
-              className="h-8 px-3.5 rounded bg-kds-blue-600 hover:bg-kds-blue-800 text-white text-xs font-semibold transition-colors"
+              className="h-10 px-5 rounded-lg bg-kds-blue-600 hover:bg-kds-blue-800 text-white text-xs sm:text-sm font-semibold transition-colors shadow-sm"
             >
               로그인
             </button>

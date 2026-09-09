@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className="antialiased h-screen w-screen overflow-hidden flex flex-col bg-kds-gray-50 text-kds-gray-900 font-sans">
+      <body className="antialiased min-h-screen w-full flex flex-col bg-kds-gray-50 text-kds-gray-900 font-sans">
         <Providers>{children}</Providers>
         <ToastContainer />
       </body>
