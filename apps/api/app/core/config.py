@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     qdrant_api_key: str | None = None
     qdrant_collection: str = "dograc_chunks"
     retrieval_top_k: int = Field(default=10, ge=1, le=50)
+    max_context_chunks: int = Field(default=5, ge=1, le=20)
+    generation_provider: str = "vllm"
+    generation_base_url: str = "http://localhost:8001/v1"
+    generation_model: str = "Qwen/Qwen3-8B"
+    generation_api_key: str | None = None
 
     @model_validator(mode="after")
     def validate_chunk_settings(self) -> "Settings":

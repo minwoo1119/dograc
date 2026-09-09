@@ -11,18 +11,22 @@ from app.core.config import Settings
 from app.db.base import Base
 from app.db.models.conversation import Message, MessageRole, Trace
 from app.main import create_app
+from app.models.generation import GenerationModelError
 from app.vector_store.protocol import VectorRecord, VectorSearchResult
 
 
 class MemoryFileStorage:
+    def __init__(self) -> None:
+        self.objects: dict[str, tuple[bytes, str]] = {}
+
     async def get(self, *, object_key: str) -> bytes:
-        return b""
+        return self.objects[object_key][0]
 
     async def put(self, *, object_key: str, content: bytes, media_type: str) -> None:
-        pass
+        self.objects[object_key] = (content, media_type)
 
     async def delete(self, *, object_key: str) -> None:
-        pass
+        self.objects.pop(object_key, None)
 
     async def check(self) -> None:
         return None
@@ -39,14 +43,21 @@ class DeterministicEmbeddingModel:
 
 
 class MemoryVectorStore:
+    def __init__(self) -> None:
+        self.records: dict[uuid.UUID, VectorRecord] = {}
+
     async def ensure_collection(self, *, dimensions: int) -> None:
         pass
 
     async def upsert(self, records: list[VectorRecord]) -> None:
-        pass
+        self.records.update({record.id: record for record in records})
 
     async def delete_document(self, *, workspace_id: uuid.UUID, document_id: uuid.UUID) -> None:
-        pass
+        self.records = {
+            r_id: r
+            for r_id, r in self.records.items()
+            if r.payload.get("document_id") != str(document_id)
+        }
 
     async def search(
         self,
@@ -56,10 +67,37 @@ class MemoryVectorStore:
         document_ids: list[uuid.UUID] | None,
         limit: int,
     ) -> list[VectorSearchResult]:
-        return []
+        results = []
+        for r in self.records.values():
+            if r.payload.get("workspace_id") == str(workspace_id):
+                doc_id_val = r.payload.get("document_id")
+                if document_ids and uuid.UUID(str(doc_id_val)) not in document_ids:
+                    continue
+                results.append(VectorSearchResult(id=r.id, score=0.95, payload=r.payload))
+        return results[:limit]
 
     async def check(self) -> None:
         return None
+
+
+class MockGenerationModel:
+    model_name = "test-mock-llm"
+
+    def __init__(
+        self,
+        answer: str = "문서에 따르면 핵심 내용은 이것입니다. [test.txt, p.1]",
+    ) -> None:
+        self.answer = answer
+        self.last_prompt: str | None = None
+        self.last_system_prompt: str | None = None
+        self.should_fail: bool = False
+
+    async def generate(self, *, prompt: str, system_prompt: str | None = None) -> str:
+        if self.should_fail:
+            raise GenerationModelError("Mock LLM failure")
+        self.last_prompt = prompt
+        self.last_system_prompt = system_prompt
+        return self.answer
 
 
 class _TestContext:
@@ -69,6 +107,7 @@ class _TestContext:
         self.file_storage = MemoryFileStorage()
         self.embedding_model = DeterministicEmbeddingModel()
         self.vector_store = MemoryVectorStore()
+        self.generation_model = MockGenerationModel()
 
     async def setup(self) -> None:
         async with self.engine.begin() as connection:
@@ -92,6 +131,7 @@ def client_factory(tmp_path: Path) -> Iterator[tuple[TestClient, _TestContext]]:
         file_storage=context.file_storage,
         embedding_model=context.embedding_model,
         vector_store=context.vector_store,
+        generation_model=context.generation_model,
     )
     with TestClient(app) as test_client:
         yield test_client, context
@@ -248,3 +288,86 @@ def test_trace_retrieval(tmp_path: Path) -> None:
             ).status_code
             == 404
         )
+
+
+def test_send_message_rag_pipeline(tmp_path: Path) -> None:
+    with client_factory(tmp_path) as (client, context):
+        owner_id = uuid.uuid4()
+
+        # 1. Workspace 생성
+        ws_res = client.post(
+            "/api/v1/workspaces",
+            json={"name": "RAG QA Workspace"},
+            headers={"X-User-ID": str(owner_id)},
+        )
+        workspace_id = ws_res.json()["id"]
+
+        # 2. 문서 업로드 & 처리
+        content = b"Antigravity is an AI pair programming agent."
+        upload_res = client.post(
+            f"/api/v1/workspaces/{workspace_id}/documents",
+            files={"file": ("knowledge.txt", content, "text/plain")},
+            headers={"X-User-ID": str(owner_id)},
+        )
+        assert upload_res.status_code == 201
+        doc_id = upload_res.json()["id"]
+
+        process_res = client.post(
+            f"/api/v1/documents/{doc_id}/process",
+            headers={"X-User-ID": str(owner_id)},
+        )
+        assert process_res.status_code == 200
+        assert process_res.json()["status"] == "ready"
+
+        # 3. 대화 세션 생성
+        conv_res = client.post(
+            f"/api/v1/workspaces/{workspace_id}/conversations",
+            json={"title": "Q&A Session"},
+            headers={"X-User-ID": str(owner_id)},
+        )
+        conv_id = conv_res.json()["id"]
+
+        # 4. 메시지 전송 (RAG 질의응답)
+        msg_res = client.post(
+            f"/api/v1/conversations/{conv_id}/messages",
+            json={"content": "What is Antigravity?"},
+            headers={"X-User-ID": str(owner_id)},
+        )
+        assert msg_res.status_code == 201
+        msg_data = msg_res.json()
+        assert msg_data["role"] == "assistant"
+        assert msg_data["trace_id"] is not None
+        assert "Antigravity" in context.generation_model.last_prompt
+        assert "knowledge.txt" in context.generation_model.last_prompt
+
+        # 5. Trace 확인
+        trace_res = client.get(
+            f"/api/v1/traces/{msg_data['trace_id']}",
+            headers={"X-User-ID": str(owner_id)},
+        )
+        assert trace_res.status_code == 200
+        trace = trace_res.json()
+        assert len(trace["retrieved_chunks"]) >= 1
+        assert trace["retrieved_chunks"][0]["source_file_name"] == "knowledge.txt"
+        assert trace["model_name"] == "test-mock-llm"
+
+        # 6. Conversation 상세에서 유저 메시지와 어시스턴트 메시지가 모두 누적되었는지 확인
+        conv_detail = client.get(
+            f"/api/v1/conversations/{conv_id}",
+            headers={"X-User-ID": str(owner_id)},
+        ).json()
+        assert len(conv_detail["messages"]) == 2
+        assert conv_detail["messages"][0]["role"] == "user"
+        assert conv_detail["messages"][0]["content"] == "What is Antigravity?"
+        assert conv_detail["messages"][1]["role"] == "assistant"
+        assert conv_detail["messages"][1]["id"] == msg_data["id"]
+
+        # 7. LLM 에러 발생 시 503 처리 확인
+        context.generation_model.should_fail = True
+        err_msg_res = client.post(
+            f"/api/v1/conversations/{conv_id}/messages",
+            json={"content": "Another question"},
+            headers={"X-User-ID": str(owner_id)},
+        )
+        assert err_msg_res.status_code == 503
+        assert err_msg_res.json()["error"]["code"] == "GENERATION_FAILED"

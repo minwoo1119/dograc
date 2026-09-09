@@ -1,12 +1,19 @@
 import uuid
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Request, Response, status
 
-from app.api.dependencies import CurrentUserId, DatabaseSession
+from app.api.dependencies import (
+    CurrentUserId,
+    DatabaseSession,
+    EmbeddingModelDependency,
+    GenerationModelDependency,
+    VectorStoreDependency,
+)
 from app.conversations.schemas import (
     ConversationCreate,
     ConversationDetailResponse,
     ConversationResponse,
+    MessageCreate,
     MessageResponse,
 )
 from app.conversations.service import ConversationService
@@ -103,3 +110,41 @@ async def delete_conversation(
         owner_id=user_id,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@conversations_router.post(
+    "/{conversation_id}/messages",
+    response_model=MessageResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
+        status.HTTP_503_SERVICE_UNAVAILABLE: {"model": ErrorResponse},
+    },
+)
+async def send_message(
+    conversation_id: uuid.UUID,
+    payload: MessageCreate,
+    request: Request,
+    session: DatabaseSession,
+    user_id: CurrentUserId,
+    embedding_model: EmbeddingModelDependency,
+    vector_store: VectorStoreDependency,
+    generation_model: GenerationModelDependency,
+) -> MessageResponse:
+    assistant_message, trace = await ConversationService(session).send_message(
+        conversation_id=conversation_id,
+        owner_id=user_id,
+        content=payload.content,
+        embedding_model=embedding_model,
+        vector_store=vector_store,
+        generation_model=generation_model,
+        top_k=request.app.state.settings.max_context_chunks,
+    )
+    return MessageResponse(
+        id=assistant_message.id,
+        conversation_id=assistant_message.conversation_id,
+        role=assistant_message.role,
+        content=assistant_message.content,
+        created_at=assistant_message.created_at,
+        trace_id=trace.id,
+    )

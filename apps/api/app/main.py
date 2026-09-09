@@ -11,6 +11,7 @@ from app.db.health import DatabaseReadinessCheck
 from app.db.session import create_engine, create_session_factory
 from app.health.checks import ReadinessCheck
 from app.models.embedding import EmbeddingModel, SentenceTransformerEmbeddingModel
+from app.models.generation import GenerationModel, OpenAICompatibleGenerationModel
 from app.storage.health import FileStorageReadinessCheck
 from app.storage.protocol import FileStorage
 from app.storage.s3 import S3FileStorage
@@ -27,6 +28,7 @@ def create_app(
     file_storage: FileStorage | None = None,
     embedding_model: EmbeddingModel | None = None,
     vector_store: VectorStore | None = None,
+    generation_model: GenerationModel | None = None,
 ) -> FastAPI:
     app_settings = settings or get_settings()
     engine = None
@@ -52,6 +54,12 @@ def create_app(
             api_key=app_settings.qdrant_api_key,
             collection_name=app_settings.qdrant_collection,
         )
+    if generation_model is None:
+        generation_model = OpenAICompatibleGenerationModel(
+            model_name=app_settings.generation_model,
+            base_url=app_settings.generation_base_url,
+            api_key=app_settings.generation_api_key,
+        )
     app_readiness_checks = (
         tuple(readiness_checks)
         if readiness_checks is not None
@@ -70,6 +78,7 @@ def create_app(
         application.state.file_storage = file_storage
         application.state.embedding_model = embedding_model
         application.state.vector_store = vector_store
+        application.state.generation_model = generation_model
         try:
             yield
         finally:

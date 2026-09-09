@@ -19,3 +19,12 @@ class TraceNotFoundError(ApplicationError):
             message="Trace was not found.",
             status_code=status.HTTP_404_NOT_FOUND,
         )
+
+
+class GenerationFailedError(ApplicationError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="GENERATION_FAILED",
+            message="Failed to generate completion from LLM.",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
