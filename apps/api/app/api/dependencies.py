@@ -17,9 +17,32 @@ async def get_db_session(request: Request) -> AsyncIterator[AsyncSession]:
 
 
 def get_current_user_id(
-    user_id: Annotated[uuid.UUID, Header(alias="X-User-ID")],
+    x_user_id: Annotated[str | None, Header(alias="X-User-ID")] = None,
+    authorization: Annotated[str | None, Header(alias="Authorization")] = None,
 ) -> uuid.UUID:
-    return user_id
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.removeprefix("Bearer ").strip()
+        from app.auth.service import verify_access_token
+
+        return verify_access_token(token)
+
+    if x_user_id:
+        try:
+            return uuid.UUID(x_user_id)
+        except ValueError as e:
+            from fastapi import HTTPException
+
+            raise HTTPException(
+                status_code=422,
+                detail="X-User-ID 헤더의 UUID 형식이 올바르지 않습니다.",
+            ) from e
+
+    from fastapi import HTTPException
+
+    raise HTTPException(
+        status_code=422,
+        detail="사용자 인증 식별자가 필요합니다. (X-User-ID 또는 Authorization 헤더)",
+    )
 
 
 def get_file_storage(request: Request) -> FileStorage:

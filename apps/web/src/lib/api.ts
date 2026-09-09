@@ -1,9 +1,11 @@
 import {
+  AuthResponse,
   Conversation,
   ConversationDetail,
   DocumentItem,
   Message,
   Trace,
+  User,
   Workspace,
 } from "@/types";
 
@@ -11,11 +13,21 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v
 
 async function request<T>(
   path: string,
-  userId: string,
+  userId?: string,
   options: RequestInit = {}
 ): Promise<T> {
   const headers = new Headers(options.headers || {});
-  headers.set("X-User-ID", userId);
+  
+  if (userId) {
+    headers.set("X-User-ID", userId);
+  }
+
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("dograc_token");
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+  }
 
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
@@ -23,11 +35,13 @@ async function request<T>(
   });
 
   if (!res.ok) {
-    let errorMsg = `Request failed with status ${res.status}`;
+    let errorMsg = `요청 실패 (상태 코드 ${res.status})`;
     try {
       const errData = await res.json();
       if (errData?.error?.message) {
         errorMsg = errData.error.message;
+      } else if (errData?.detail) {
+        errorMsg = typeof errData.detail === "string" ? errData.detail : JSON.stringify(errData.detail);
       }
     } catch {
       // Ignore JSON parse error
@@ -43,6 +57,29 @@ async function request<T>(
 }
 
 export const api = {
+  // Auth
+  register: (email: string, username: string, password: string) =>
+    request<AuthResponse>("/auth/register", undefined, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, username, password }),
+    }),
+
+  login: (emailOrUsername: string, password: string) =>
+    request<AuthResponse>("/auth/login", undefined, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email_or_username: emailOrUsername, password }),
+    }),
+
+  getMe: (userId: string) =>
+    request<User>("/auth/me", userId),
+
+  logout: () =>
+    request<{ message: string }>("/auth/logout", undefined, {
+      method: "POST",
+    }),
+
   // Workspaces
   getWorkspaces: (userId: string) =>
     request<Workspace[]>("/workspaces", userId),
@@ -74,6 +111,13 @@ export const api = {
     const headers = new Headers();
     headers.set("X-User-ID", userId);
 
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("dograc_token");
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+    }
+
     const res = await fetch(
       `${BASE_URL}/workspaces/${workspaceId}/documents`,
       {
@@ -84,10 +128,11 @@ export const api = {
     );
 
     if (!res.ok) {
-      let errorMsg = `Upload failed (${res.status})`;
+      let errorMsg = `업로드 실패 (${res.status})`;
       try {
         const err = await res.json();
         if (err?.error?.message) errorMsg = err.error.message;
+        else if (err?.detail) errorMsg = typeof err.detail === "string" ? err.detail : JSON.stringify(err.detail);
       } catch {
         // Ignore
       }
