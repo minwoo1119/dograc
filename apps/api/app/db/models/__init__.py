@@ -1,3 +1,4 @@
+from app.db.models.conversation import Conversation, Message, MessageRole, Trace
 from app.db.models.document import (
     Document,
     DocumentChunk,
@@ -8,10 +9,14 @@ from app.db.models.document import (
 from app.db.models.workspace import Workspace
 
 __all__ = [
+    "Conversation",
     "Document",
     "DocumentChunk",
     "DocumentPage",
     "DocumentStatus",
     "DocumentVersion",
+    "Message",
+    "MessageRole",
+    "Trace",
     "Workspace",
 ]
