@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { ToastContainer } from "@/components/ToastContainer";
 
 export const metadata: Metadata = {
   title: "dograc - 문서 기반 모듈형 RAG 시스템",
@@ -19,8 +20,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className="antialiased min-h-screen flex flex-col bg-kds-gray-50 text-kds-gray-900">
+      <body className="antialiased h-screen w-screen overflow-hidden flex flex-col bg-kds-gray-50 text-kds-gray-900 font-sans">
         <Providers>{children}</Providers>
+        <ToastContainer />
       </body>
     </html>
   );

@@ -8,6 +8,7 @@ import {
   User,
   Workspace,
 } from "@/types";
+import { toast } from "@/lib/toast";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -36,16 +37,25 @@ async function request<T>(
 
   if (!res.ok) {
     let errorMsg = `요청 실패 (상태 코드 ${res.status})`;
+    let errorCode: string | undefined = `HTTP_${res.status}`;
+
     try {
       const errData = await res.json();
-      if (errData?.error?.message) {
-        errorMsg = errData.error.message;
+      if (errData?.error) {
+        if (errData.error.message) errorMsg = errData.error.message;
+        if (errData.error.code) errorCode = errData.error.code;
       } else if (errData?.detail) {
         errorMsg = typeof errData.detail === "string" ? errData.detail : JSON.stringify(errData.detail);
       }
     } catch {
       // Ignore JSON parse error
     }
+
+    // 우측 하단 에러 토스트 자동 팝업
+    if (typeof window !== "undefined") {
+      toast.error(errorMsg, errorCode);
+    }
+
     throw new Error(errorMsg);
   }
 
@@ -129,12 +139,20 @@ export const api = {
 
     if (!res.ok) {
       let errorMsg = `업로드 실패 (${res.status})`;
+      let errorCode: string | undefined = `HTTP_${res.status}`;
       try {
         const err = await res.json();
-        if (err?.error?.message) errorMsg = err.error.message;
-        else if (err?.detail) errorMsg = typeof err.detail === "string" ? err.detail : JSON.stringify(err.detail);
+        if (err?.error) {
+          if (err.error.message) errorMsg = err.error.message;
+          if (err.error.code) errorCode = err.error.code;
+        } else if (err?.detail) {
+          errorMsg = typeof err.detail === "string" ? err.detail : JSON.stringify(err.detail);
+        }
       } catch {
         // Ignore
+      }
+      if (typeof window !== "undefined") {
+        toast.error(errorMsg, errorCode);
       }
       throw new Error(errorMsg);
     }

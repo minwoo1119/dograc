@@ -154,20 +154,20 @@ export function ChatPanel() {
   const messages = conversationDetail?.messages || [];
 
   return (
-    <div className="h-full flex flex-col bg-kds-gray-50">
+    <div className="h-full flex flex-col bg-kds-gray-50 overflow-hidden min-h-0">
       {/* 상단 대화 세션 탭 (KDS Reading Tab Pattern) */}
-      <div className="h-12 bg-white border-b border-kds-gray-300 px-4 flex items-center justify-between">
-        <div className="flex items-center space-x-1.5 overflow-x-auto">
+      <div className="h-12 bg-white border-b border-kds-gray-300 px-4 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center space-x-1.5 overflow-x-auto min-w-0 pr-2">
           {conversations.map((conv) => {
             const isActive = conv.id === currentConversationId;
             return (
               <div
                 key={conv.id}
                 onClick={() => setCurrentConversationId(conv.id)}
-                className={`group flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
+                className={`group flex items-center space-x-2 px-3 py-1.5 rounded text-xs font-medium cursor-pointer transition-colors ${
                   isActive
-                    ? "bg-kds-gray-100 text-kds-gray-900 border border-kds-gray-300"
-                    : "text-kds-gray-600 hover:text-kds-gray-900 hover:bg-kds-gray-50"
+                    ? "bg-kds-blue-50 text-kds-blue-700 border border-kds-blue-200"
+                    : "text-kds-gray-600 hover:text-kds-gray-900 hover:bg-kds-gray-50 border border-transparent"
                 }`}
               >
                 <span className="truncate max-w-[120px]">{conv.title}</span>
@@ -182,7 +182,7 @@ export function ChatPanel() {
                     className="opacity-0 group-hover:opacity-100 text-kds-gray-400 hover:text-kds-red-500 transition-opacity p-0.5"
                     title="대화 삭제"
                   >
-                    <Trash2 className="w-3 h-3" strokeWidth={1.75} />
+                    <Trash2 className="w-3 h-3 stroke-[1.5]" />
                   </button>
                 )}
               </div>
@@ -192,18 +192,18 @@ export function ChatPanel() {
 
         <button
           onClick={() => createConversationMutation.mutate()}
-          className="inline-flex items-center space-x-1 h-8 px-2.5 rounded-lg border border-kds-gray-300 bg-white hover:bg-kds-gray-50 text-xs font-medium text-kds-gray-700 transition-colors flex-shrink-0"
+          className="inline-flex items-center space-x-1 h-8 px-2.5 rounded border border-kds-gray-300 bg-white hover:bg-kds-gray-50 text-xs font-medium text-kds-gray-700 transition-colors flex-shrink-0"
         >
-          <Plus className="w-3.5 h-3.5" strokeWidth={1.75} />
+          <Plus className="w-3.5 h-3.5 stroke-[1.5]" />
           <span>새 대화</span>
         </button>
       </div>
 
       {/* 메시지 영역 (Reading-First Layout) */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+      <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-6 py-6 space-y-5">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto">
-            <div className="w-10 h-10 rounded-xl bg-white border border-kds-gray-300 flex items-center justify-center mb-3 shadow-subtle">
+            <div className="w-10 h-10 rounded bg-white border border-kds-gray-300 flex items-center justify-center mb-3 shadow-subtle">
               <FileText className="w-5 h-5 text-kds-blue-700 stroke-[1.5]" />
             </div>
             <h3 className="text-sm font-bold text-kds-gray-900">
@@ -229,10 +229,10 @@ export function ChatPanel() {
 
                 {/* 메시지 버블 */}
                 <div
-                  className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 text-xs leading-relaxed shadow-subtle ${
+                  className={`max-w-[85%] sm:max-w-[75%] rounded-lg px-4 py-3 text-xs leading-relaxed border ${
                     isUser
-                      ? "bg-kds-gray-800 text-white rounded-tr-none font-normal"
-                      : "bg-white text-kds-gray-900 border border-kds-gray-300 rounded-tl-none font-normal"
+                      ? "bg-kds-blue-50/80 border-kds-blue-200 text-kds-gray-900 rounded-tr-none font-normal"
+                      : "bg-white border-kds-gray-300 text-kds-gray-900 rounded-tl-none font-normal shadow-xs"
                   }`}
                 >
                   <div className="whitespace-pre-wrap">
@@ -260,8 +260,8 @@ export function ChatPanel() {
         {sendMessageMutation.isPending && (
           <div className="flex flex-col items-start space-y-1">
             <span className="text-[11px] font-medium text-kds-gray-500 px-1">dograc</span>
-            <div className="bg-white border border-kds-gray-300 rounded-2xl rounded-tl-none px-4 py-3 shadow-subtle flex items-center space-x-2 text-xs text-kds-gray-600">
-              <Loader2 className="w-4 h-4 text-kds-blue-700 animate-spin" strokeWidth={2} />
+            <div className="bg-white border border-kds-gray-300 rounded rounded-tl-none px-4 py-3 shadow-subtle flex items-center space-x-2 text-xs text-kds-gray-700">
+              <Loader2 className="w-4 h-4 text-kds-blue-600 animate-spin" strokeWidth={2} />
               <span>문서를 검색하고 답변을 생성하고 있습니다...</span>
             </div>
           </div>
@@ -271,7 +271,7 @@ export function ChatPanel() {
       </div>
 
       {/* 하단 입력 영역 (KDS Input Box) */}
-      <div className="p-4 bg-white border-t border-kds-gray-300">
+      <div className="p-3.5 sm:p-4 bg-white border-t border-kds-gray-300 flex-shrink-0">
         <form onSubmit={handleSend} className="max-w-[960px] mx-auto flex items-center space-x-2">
           <input
             type="text"
@@ -285,15 +285,15 @@ export function ChatPanel() {
             }}
             placeholder="문서 내용에 대해 질문하세요..."
             disabled={sendMessageMutation.isPending}
-            className="flex-1 h-11 border border-kds-gray-300 rounded-xl px-4 text-xs text-kds-gray-900 placeholder:text-kds-gray-400 focus:outline-none focus:border-kds-blue-700 disabled:bg-kds-gray-50 transition-colors"
+            className="flex-1 h-10 border border-kds-gray-300 rounded px-3.5 text-xs text-kds-gray-900 placeholder:text-kds-gray-400 focus:outline-none focus:border-kds-blue-600 focus:ring-1 focus:ring-kds-blue-600 disabled:bg-kds-gray-50 transition-colors"
           />
           <button
             type="submit"
             disabled={!inputContent.trim() || sendMessageMutation.isPending}
-            className="h-11 px-4 bg-kds-blue-700 hover:bg-kds-blue-800 text-white rounded-xl text-xs font-medium inline-flex items-center space-x-1.5 transition-colors disabled:opacity-40 flex-shrink-0"
+            className="h-10 px-4 bg-kds-blue-600 hover:bg-kds-blue-800 text-white rounded text-xs font-semibold inline-flex items-center space-x-1.5 transition-colors disabled:opacity-40 flex-shrink-0"
           >
             <span>전송</span>
-            <Send className="w-3.5 h-3.5" strokeWidth={1.75} />
+            <Send className="w-3.5 h-3.5 stroke-[1.5]" />
           </button>
         </form>
       </div>

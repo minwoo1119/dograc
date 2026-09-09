@@ -1,13 +1,19 @@
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.api.v1.router import api_router
 from app.core.config import Settings, get_settings
-from app.core.errors import ApplicationError, application_error_handler
+from app.core.errors import (
+    ApplicationError,
+    application_error_handler,
+    http_exception_handler,
+    validation_exception_handler,
+)
 from app.db.health import DatabaseReadinessCheck
 from app.db.session import create_engine, create_session_factory
 from app.health.checks import ReadinessCheck
@@ -101,6 +107,8 @@ def create_app(
         allow_headers=["*"],
     )
     application.add_exception_handler(ApplicationError, application_error_handler)
+    application.add_exception_handler(HTTPException, http_exception_handler)
+    application.add_exception_handler(RequestValidationError, validation_exception_handler)
     application.include_router(api_router, prefix="/api/v1")
     return application
 

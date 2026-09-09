@@ -61,10 +61,12 @@ const config: Config = {
         kds: "-0.01em",
       },
       boxShadow: {
+        xs: "0 1px 2px 0 rgba(0, 0, 0, 0.03)",
         subtle: "0 1px 3px 0 rgba(0, 0, 0, 0.04)",
         card: "0 2px 6px 0 rgba(0, 0, 0, 0.03), 0 1px 2px 0 rgba(0, 0, 0, 0.02)",
         drawer: "-4px 0 24px 0 rgba(0, 0, 0, 0.06)",
         dropdown: "0 6px 16px 0 rgba(0, 0, 0, 0.08)",
+        modal: "0 16px 40px -8px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.02)",
       },
       borderRadius: {
         'kds-xs': '4px',

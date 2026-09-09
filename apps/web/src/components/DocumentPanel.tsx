@@ -126,19 +126,19 @@ export function DocumentPanel() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col bg-white overflow-hidden min-h-0">
       {/* 패널 타이틀 */}
-      <div className="h-12 px-5 border-b border-kds-gray-300 flex items-center justify-between">
+      <div className="h-12 px-5 border-b border-kds-gray-300 flex items-center justify-between flex-shrink-0 bg-white">
         <div className="flex items-center space-x-2">
           <span className="text-xs font-bold text-kds-gray-900 tracking-tight">문서 보관함</span>
-          <span className="text-[11px] font-medium text-kds-blue-700 bg-kds-blue-50 px-1.5 py-0.2 rounded-full">
+          <span className="text-[11px] font-medium text-kds-blue-700 bg-kds-blue-50 px-2 py-0.5 rounded-full border border-kds-blue-200">
             {documents.length}
           </span>
         </div>
       </div>
 
       {/* 파일 업로드 드롭 영역 */}
-      <div className="p-4 border-b border-kds-gray-200">
+      <div className="p-4 border-b border-kds-gray-200 flex-shrink-0 bg-white">
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -151,7 +151,7 @@ export function DocumentPanel() {
             handleFiles(e.dataTransfer.files);
           }}
           onClick={() => fileInputRef.current?.click()}
-          className={`border border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors ${
+          className={`border border-dashed rounded p-4 text-center cursor-pointer transition-colors ${
             dragOver
               ? "border-kds-blue-700 bg-kds-blue-50"
               : "border-kds-gray-300 hover:border-kds-gray-400 bg-kds-gray-50/70"
@@ -185,7 +185,7 @@ export function DocumentPanel() {
         </div>
 
         {errorMessage && (
-          <div className="mt-2.5 p-2 rounded-lg bg-kds-red-50 border border-kds-red-100 flex items-center space-x-1.5 text-xs text-kds-red-500">
+          <div className="mt-2.5 p-2 rounded bg-kds-red-50 border border-kds-red-100 flex items-center space-x-1.5 text-xs text-kds-red-500">
             <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2} />
             <span>{errorMessage}</span>
           </div>
@@ -193,7 +193,7 @@ export function DocumentPanel() {
       </div>
 
       {/* 문서 목록 리스트 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
         {documents.length === 0 ? (
           <div className="text-center py-12 text-kds-gray-400 text-xs">
             보관된 문서가 없습니다.
@@ -202,7 +202,7 @@ export function DocumentPanel() {
           documents.map((doc) => (
             <div
               key={doc.id}
-              className="border border-kds-gray-300 rounded-lg p-3 hover:border-kds-gray-400 transition-colors bg-white space-y-2 group"
+              className="border border-kds-gray-300 rounded p-3 hover:border-kds-gray-400 transition-colors bg-white space-y-2 group"
             >
               <div className="flex items-start justify-between space-x-2">
                 <div className="flex items-center space-x-2 min-w-0">
