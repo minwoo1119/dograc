@@ -24,6 +24,20 @@ class DocumentRepository:
         await self._session.refresh(document)
         return document
 
+    async def list_for_workspace(
+        self,
+        *,
+        workspace_id: uuid.UUID,
+        owner_id: uuid.UUID,
+    ) -> list[Document]:
+        statement = (
+            select(Document)
+            .join(Workspace, Workspace.id == Document.workspace_id)
+            .where(Document.workspace_id == workspace_id, Workspace.owner_id == owner_id)
+            .order_by(Document.created_at.desc())
+        )
+        return list((await self._session.scalars(statement)).all())
+
     async def get_for_owner(
         self,
         *,
@@ -37,6 +51,10 @@ class DocumentRepository:
             .options(selectinload(Document.versions).selectinload(DocumentVersion.pages))
         )
         return await self._session.scalar(statement)
+
+    async def delete(self, document: Document) -> None:
+        await self._session.delete(document)
+        await self._session.flush()
 
     async def replace_pages(
         self,

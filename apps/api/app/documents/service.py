@@ -6,10 +6,15 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.document import Document, DocumentStatus, DocumentVersion
-from app.documents.errors import DocumentProcessingError, DocumentUploadValidationError
+from app.documents.errors import (
+    DocumentNotFoundError,
+    DocumentProcessingError,
+    DocumentUploadValidationError,
+)
 from app.documents.repository import DocumentRepository
 from app.documents.validation import DocumentValidationError, validate_document_upload
 from app.storage.protocol import FileStorage, FileStorageError
+from app.vector_store.protocol import VectorStore, VectorStoreError
 from app.workspaces.service import WorkspaceService
 
 logger = logging.getLogger(__name__)
@@ -21,12 +26,72 @@ class DocumentService:
         *,
         session: AsyncSession,
         file_storage: FileStorage,
-        max_size_bytes: int,
+        vector_store: VectorStore | None = None,
+        max_size_bytes: int = 25 * 1024 * 1024,
     ) -> None:
         self._session = session
         self._file_storage = file_storage
+        self._vector_store = vector_store
         self._max_size_bytes = max_size_bytes
         self._repository = DocumentRepository(session)
+
+    async def list_for_workspace(
+        self,
+        *,
+        workspace_id: uuid.UUID,
+        owner_id: uuid.UUID,
+    ) -> list[Document]:
+        await WorkspaceService(self._session).get(
+            workspace_id=workspace_id,
+            owner_id=owner_id,
+        )
+        return await self._repository.list_for_workspace(
+            workspace_id=workspace_id,
+            owner_id=owner_id,
+        )
+
+    async def get(
+        self,
+        *,
+        document_id: uuid.UUID,
+        owner_id: uuid.UUID,
+    ) -> Document:
+        document = await self._repository.get_for_owner(
+            document_id=document_id,
+            owner_id=owner_id,
+        )
+        if document is None:
+            raise DocumentNotFoundError
+        return document
+
+    async def delete(
+        self,
+        *,
+        document_id: uuid.UUID,
+        owner_id: uuid.UUID,
+    ) -> None:
+        document = await self.get(document_id=document_id, owner_id=owner_id)
+        for version in document.versions:
+            try:
+                await self._file_storage.delete(object_key=version.object_key)
+            except FileStorageError:
+                logger.exception(
+                    "Failed to delete object from storage",
+                    extra={"object_key": version.object_key},
+                )
+        if self._vector_store is not None:
+            try:
+                await self._vector_store.delete_document(
+                    workspace_id=document.workspace_id,
+                    document_id=document.id,
+                )
+            except VectorStoreError:
+                logger.exception(
+                    "Failed to delete vectors from vector store",
+                    extra={"document_id": str(document.id)},
+                )
+        await self._repository.delete(document)
+        await self._session.commit()
 
     async def upload(
         self,

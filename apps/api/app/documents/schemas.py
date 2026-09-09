@@ -14,5 +14,6 @@ class DocumentResponse(BaseModel):
     source_file_name: str
     media_type: str
     status: DocumentStatus
+    failure_code: str | None = None
     created_at: datetime
     updated_at: datetime
