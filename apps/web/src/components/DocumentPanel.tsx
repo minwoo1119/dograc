@@ -7,13 +7,14 @@ import { useAppStore } from "@/lib/store";
 import { DocumentStatus } from "@/types";
 import {
   FileText,
-  Upload,
+  FileUp,
   Play,
   Trash2,
   CheckCircle2,
   Clock,
   AlertCircle,
   Loader2,
+  FolderOpen,
 } from "lucide-react";
 
 export function DocumentPanel() {
@@ -32,7 +33,7 @@ export function DocumentPanel() {
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => {
-      if (!currentWorkspaceId) throw new Error("워크스페이스를 먼저 선택하세요.");
+      if (!currentWorkspaceId) throw new Error("워크스페이스를 먼저 선택해 주세요.");
       return api.uploadDocument(userId, currentWorkspaceId, file);
     },
     onSuccess: (newDoc) => {
@@ -40,7 +41,7 @@ export function DocumentPanel() {
         queryKey: ["documents", userId, currentWorkspaceId],
       });
       setErrorMessage(null);
-      // 업로드 완료 후 자동으로 색인(처리) 시도
+      // 업로드 완료 후 자동 색인 처리 트리거
       processMutation.mutate(newDoc.id);
     },
     onError: (err) => setErrorMessage(err.message),
@@ -71,39 +72,39 @@ export function DocumentPanel() {
     const file = files[0];
     const ext = file.name.split(".").pop()?.toLowerCase();
     if (ext !== "pdf" && ext !== "txt") {
-      setErrorMessage("현재는 PDF 및 TXT 문서만 지원합니다.");
+      setErrorMessage("현재는 PDF 및 TXT 문서만 업로드할 수 있습니다.");
       return;
     }
     uploadMutation.mutate(file);
   };
 
-  const getStatusBadge = (status: DocumentStatus) => {
+  const renderStatusBadge = (status: DocumentStatus) => {
     switch (status) {
       case "ready":
         return (
-          <span className="flex items-center space-x-1 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-xs">
-            <CheckCircle2 className="w-3 h-3" />
+          <span className="inline-flex items-center space-x-1 h-[22px] px-2 rounded text-[11px] font-medium bg-kds-green-100 text-kds-green-700">
+            <CheckCircle2 className="w-3 h-3" strokeWidth={2} />
             <span>색인 완료</span>
           </span>
         );
       case "processing":
         return (
-          <span className="flex items-center space-x-1 text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full text-xs">
-            <Loader2 className="w-3 h-3 animate-spin" />
+          <span className="inline-flex items-center space-x-1 h-[22px] px-2 rounded text-[11px] font-medium bg-kds-blue-100 text-kds-blue-700">
+            <Loader2 className="w-3 h-3 animate-spin" strokeWidth={2} />
             <span>처리 중</span>
           </span>
         );
       case "uploaded":
         return (
-          <span className="flex items-center space-x-1 text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-xs">
-            <Clock className="w-3 h-3" />
+          <span className="inline-flex items-center space-x-1 h-[22px] px-2 rounded text-[11px] font-medium bg-kds-gray-100 text-kds-gray-700">
+            <Clock className="w-3 h-3" strokeWidth={2} />
             <span>대기 중</span>
           </span>
         );
       case "failed":
         return (
-          <span className="flex items-center space-x-1 text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full text-xs">
-            <AlertCircle className="w-3 h-3" />
+          <span className="inline-flex items-center space-x-1 h-[22px] px-2 rounded text-[11px] font-medium bg-kds-red-100 text-kds-red-500">
+            <AlertCircle className="w-3 h-3" strokeWidth={2} />
             <span>실패</span>
           </span>
         );
@@ -112,28 +113,32 @@ export function DocumentPanel() {
 
   if (!currentWorkspaceId) {
     return (
-      <div className="h-full flex items-center justify-center p-6 text-center text-slate-400">
-        <div>
-          <FileText className="w-10 h-10 mx-auto mb-2 opacity-40" />
-          <p className="text-sm">상단에서 워크스페이스를 먼저 선택하세요.</p>
-        </div>
+      <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-white">
+        <FolderOpen className="w-8 h-8 text-kds-gray-400 mb-2 stroke-[1.5]" />
+        <p className="text-xs font-medium text-kds-gray-700">
+          워크스페이스를 먼저 선택해 주세요
+        </p>
+        <p className="text-[11px] text-kds-gray-500 mt-0.5">
+          상단 메뉴에서 작업할 워크스페이스를 고르거나 새로 만들 수 있습니다.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-white border-r border-slate-200">
-      <div className="p-4 border-b border-slate-200">
-        <h2 className="text-sm font-bold text-slate-800 flex items-center justify-between">
-          <span>문서 보관함</span>
-          <span className="text-xs font-normal text-slate-500">
-            총 {documents.length}개
+    <div className="h-full flex flex-col bg-white">
+      {/* 패널 타이틀 */}
+      <div className="h-12 px-5 border-b border-kds-gray-300 flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <span className="text-xs font-bold text-kds-gray-900 tracking-tight">문서 보관함</span>
+          <span className="text-[11px] font-medium text-kds-blue-700 bg-kds-blue-50 px-1.5 py-0.2 rounded-full">
+            {documents.length}
           </span>
-        </h2>
+        </div>
       </div>
 
       {/* 파일 업로드 드롭 영역 */}
-      <div className="p-4">
+      <div className="p-4 border-b border-kds-gray-200">
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -146,10 +151,10 @@ export function DocumentPanel() {
             handleFiles(e.dataTransfer.files);
           }}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition ${
+          className={`border border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors ${
             dragOver
-              ? "border-indigo-500 bg-indigo-50"
-              : "border-slate-300 hover:border-slate-400 bg-slate-50"
+              ? "border-kds-blue-700 bg-kds-blue-50"
+              : "border-kds-gray-300 hover:border-kds-gray-400 bg-kds-gray-50/70"
           }`}
         >
           <input
@@ -159,48 +164,53 @@ export function DocumentPanel() {
             className="hidden"
             accept=".pdf,.txt"
           />
+
           {uploadMutation.isPending || processMutation.isPending ? (
-            <div className="flex flex-col items-center py-2">
-              <Loader2 className="w-6 h-6 text-indigo-600 animate-spin mb-1" />
-              <p className="text-xs text-slate-600 font-medium">문서 업로드 및 색인 중...</p>
+            <div className="flex flex-col items-center py-2 space-y-1.5">
+              <Loader2 className="w-5 h-5 text-kds-blue-700 animate-spin" strokeWidth={2} />
+              <p className="text-xs font-medium text-kds-gray-800">문서를 분석하고 색인하는 중입니다</p>
+              <p className="text-[11px] text-kds-gray-500">페이지 분할 및 벡터 임베딩 생성 중...</p>
             </div>
           ) : (
-            <div className="flex flex-col items-center py-1">
-              <Upload className="w-6 h-6 text-slate-400 mb-1" />
-              <p className="text-xs font-semibold text-slate-700">
-                PDF 또는 TXT 파일 업로드
+            <div className="flex flex-col items-center py-1.5 space-y-1">
+              <FileUp className="w-5 h-5 text-kds-gray-500 mb-0.5 stroke-[1.5]" />
+              <p className="text-xs font-medium text-kds-gray-900">
+                문서 파일 올리기
               </p>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                클릭하거나 파일을 드래그하여 놓으세요
+              <p className="text-[11px] text-kds-gray-500">
+                PDF 또는 TXT 파일을 여기에 끌어다 놓으세요
               </p>
             </div>
           )}
         </div>
 
         {errorMessage && (
-          <div className="mt-2 text-xs text-rose-600 bg-rose-50 p-2 rounded-md flex items-center space-x-1">
-            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+          <div className="mt-2.5 p-2 rounded-lg bg-kds-red-50 border border-kds-red-100 flex items-center space-x-1.5 text-xs text-kds-red-500">
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" strokeWidth={2} />
             <span>{errorMessage}</span>
           </div>
         )}
       </div>
 
-      {/* 문서 목록 */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2.5">
+      {/* 문서 목록 리스트 */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-2">
         {documents.length === 0 ? (
-          <div className="text-center py-8 text-xs text-slate-400">
-            업로드된 문서가 없습니다.
+          <div className="text-center py-12 text-kds-gray-400 text-xs">
+            보관된 문서가 없습니다.
           </div>
         ) : (
           documents.map((doc) => (
             <div
               key={doc.id}
-              className="border border-slate-200 rounded-lg p-3 hover:shadow-sm transition bg-white space-y-2"
+              className="border border-kds-gray-300 rounded-lg p-3 hover:border-kds-gray-400 transition-colors bg-white space-y-2 group"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-2 overflow-hidden">
-                  <FileText className="w-4 h-4 text-indigo-500 flex-shrink-0" />
-                  <span className="text-xs font-semibold text-slate-800 truncate" title={doc.source_file_name}>
+              <div className="flex items-start justify-between space-x-2">
+                <div className="flex items-center space-x-2 min-w-0">
+                  <FileText className="w-4 h-4 text-kds-blue-700 flex-shrink-0 stroke-[1.75]" />
+                  <span
+                    className="text-xs font-medium text-kds-gray-900 truncate block"
+                    title={doc.source_file_name}
+                  >
                     {doc.source_file_name}
                   </span>
                 </div>
@@ -210,23 +220,23 @@ export function DocumentPanel() {
                       deleteMutation.mutate(doc.id);
                     }
                   }}
-                  className="text-slate-400 hover:text-red-500 transition p-1"
-                  title="삭제"
+                  className="opacity-0 group-hover:opacity-100 text-kds-gray-400 hover:text-kds-red-500 transition-opacity p-0.5"
+                  title="문서 삭제"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                 </button>
               </div>
 
               <div className="flex items-center justify-between pt-1">
-                {getStatusBadge(doc.status)}
+                {renderStatusBadge(doc.status)}
 
                 {doc.status === "uploaded" && (
                   <button
                     onClick={() => processMutation.mutate(doc.id)}
-                    className="flex items-center space-x-1 text-[11px] text-indigo-600 hover:text-indigo-700 font-medium"
+                    className="inline-flex items-center space-x-1 text-[11px] font-medium text-kds-blue-700 hover:text-kds-blue-800"
                   >
-                    <Play className="w-3 h-3" />
-                    <span>색인 실행</span>
+                    <Play className="w-3 h-3" strokeWidth={2} />
+                    <span>색인 시작</span>
                   </button>
                 )}
               </div>

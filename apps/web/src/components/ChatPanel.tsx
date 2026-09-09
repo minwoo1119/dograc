@@ -5,14 +5,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import {
-  Bot,
-  MessageSquarePlus,
+  Plus,
   Send,
-  Sparkles,
-  User,
-  Activity,
   Trash2,
   Loader2,
+  FileText,
+  SearchCode,
+  MessageSquare,
 } from "lucide-react";
 
 export function ChatPanel() {
@@ -39,14 +38,13 @@ export function ChatPanel() {
   });
 
   // 활성 대화 세션의 상세(메시지 목록)
-  const { data: conversationDetail, isLoading: isLoadingMessages } = useQuery({
+  const { data: conversationDetail } = useQuery({
     queryKey: ["conversation", userId, currentConversationId],
     queryFn: () =>
       currentConversationId
         ? api.getConversation(userId, currentConversationId)
         : null,
     enabled: Boolean(currentConversationId),
-    refetchInterval: false,
   });
 
   // 첫 번째 대화 자동 선택
@@ -104,7 +102,6 @@ export function ChatPanel() {
     if (e) e.preventDefault();
     if (!inputContent.trim() || sendMessageMutation.isPending) return;
 
-    // 만약 현재 대화가 없으면 대화 먼저 생성 후 전송
     if (!currentConversationId && currentWorkspaceId) {
       createConversationMutation.mutate(undefined, {
         onSuccess: (newConv) => {
@@ -125,14 +122,14 @@ export function ChatPanel() {
   };
 
   const renderContentWithCitations = (content: string) => {
-    // [파일명, p.숫자] 패턴 매칭
+    // [파일명, p.숫자] 패턴을 자연스럽게 스타일링
     const parts = content.split(/(\[[^\]]+,\s*p\.\d+\])/g);
     return parts.map((part, index) => {
       if (part.startsWith("[") && part.endsWith("]")) {
         return (
           <span
             key={index}
-            className="inline-block bg-indigo-100 text-indigo-800 text-[11px] font-semibold px-1.5 py-0.2 rounded border border-indigo-200 mx-0.5"
+            className="inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded text-[11px] font-medium bg-kds-blue-50 text-kds-blue-700 border border-kds-blue-200"
           >
             {part}
           </span>
@@ -144,14 +141,12 @@ export function ChatPanel() {
 
   if (!currentWorkspaceId) {
     return (
-      <div className="h-full flex items-center justify-center p-6 text-center text-slate-400">
-        <div>
-          <Bot className="w-12 h-12 mx-auto mb-2 opacity-30 text-indigo-400" />
-          <p className="text-base font-semibold text-slate-600">dograc RAG 질의응답</p>
-          <p className="text-xs text-slate-400 mt-1">
-            워크스페이스를 선택하면 문서 기반 질의응답을 시작할 수 있습니다.
-          </p>
-        </div>
+      <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-white">
+        <MessageSquare className="w-8 h-8 text-kds-gray-400 mb-2 stroke-[1.5]" />
+        <p className="text-xs font-medium text-kds-gray-700">대화를 시작할 준비가 되었습니다</p>
+        <p className="text-[11px] text-kds-gray-500 mt-0.5">
+          워크스페이스를 선택하고 질문을 시작해 보세요.
+        </p>
       </div>
     );
   }
@@ -159,23 +154,23 @@ export function ChatPanel() {
   const messages = conversationDetail?.messages || [];
 
   return (
-    <div className="h-full flex flex-col bg-slate-50">
-      {/* 상단 대화 세션 탭 */}
-      <div className="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between">
-        <div className="flex items-center space-x-2 overflow-x-auto">
+    <div className="h-full flex flex-col bg-kds-gray-50">
+      {/* 상단 대화 세션 탭 (KDS Reading Tab Pattern) */}
+      <div className="h-12 bg-white border-b border-kds-gray-300 px-4 flex items-center justify-between">
+        <div className="flex items-center space-x-1.5 overflow-x-auto">
           {conversations.map((conv) => {
             const isActive = conv.id === currentConversationId;
             return (
               <div
                 key={conv.id}
                 onClick={() => setCurrentConversationId(conv.id)}
-                className={`group flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition ${
+                className={`group flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
                   isActive
-                    ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
-                    : "text-slate-600 hover:bg-slate-100"
+                    ? "bg-kds-gray-100 text-kds-gray-900 border border-kds-gray-300"
+                    : "text-kds-gray-600 hover:text-kds-gray-900 hover:bg-kds-gray-50"
                 }`}
               >
-                <span>{conv.title}</span>
+                <span className="truncate max-w-[120px]">{conv.title}</span>
                 {isActive && (
                   <button
                     onClick={(e) => {
@@ -184,9 +179,10 @@ export function ChatPanel() {
                         deleteConversationMutation.mutate(conv.id);
                       }
                     }}
-                    className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition"
+                    className="opacity-0 group-hover:opacity-100 text-kds-gray-400 hover:text-kds-red-500 transition-opacity p-0.5"
+                    title="대화 삭제"
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-3 h-3" strokeWidth={1.75} />
                   </button>
                 )}
               </div>
@@ -196,23 +192,26 @@ export function ChatPanel() {
 
         <button
           onClick={() => createConversationMutation.mutate()}
-          className="flex items-center space-x-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg transition flex-shrink-0"
+          className="inline-flex items-center space-x-1 h-8 px-2.5 rounded-lg border border-kds-gray-300 bg-white hover:bg-kds-gray-50 text-xs font-medium text-kds-gray-700 transition-colors flex-shrink-0"
         >
-          <MessageSquarePlus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5" strokeWidth={1.75} />
           <span>새 대화</span>
         </button>
       </div>
 
-      {/* 메시지 영역 */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+      {/* 메시지 영역 (Reading-First Layout) */}
+      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center text-slate-400">
-            <Sparkles className="w-10 h-10 text-indigo-400 mb-2 opacity-60" />
-            <p className="text-sm font-semibold text-slate-700">
-              업로드된 문서를 바탕으로 질문해 보세요
-            </p>
-            <p className="text-xs text-slate-400 max-w-sm mt-1">
-              근거 문맥을 검색하고, 정확한 출처(파일명, 페이지)와 함께 답변을 생성합니다.
+          <div className="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto">
+            <div className="w-10 h-10 rounded-xl bg-white border border-kds-gray-300 flex items-center justify-center mb-3 shadow-subtle">
+              <FileText className="w-5 h-5 text-kds-blue-700 stroke-[1.5]" />
+            </div>
+            <h3 className="text-sm font-bold text-kds-gray-900">
+              문서 기반 질의응답
+            </h3>
+            <p className="text-xs text-kds-gray-600 mt-1.5 leading-relaxed">
+              업로드된 문서의 문맥만을 바탕으로 정확한 근거와 함께 답변합니다.
+              문서에 없는 내용은 추측하지 않습니다.
             </p>
           </div>
         ) : (
@@ -221,37 +220,34 @@ export function ChatPanel() {
             return (
               <div
                 key={msg.id}
-                className={`flex items-start space-x-3 ${
-                  isUser ? "flex-row-reverse space-x-reverse" : ""
-                }`}
+                className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
               >
+                {/* 발화자 레이블 */}
+                <span className="text-[11px] font-medium text-kds-gray-500 mb-1 px-1">
+                  {isUser ? "사용자" : "dograc"}
+                </span>
+
+                {/* 메시지 버블 */}
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white ${
-                    isUser ? "bg-slate-700" : "bg-indigo-600"
+                  className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 text-xs leading-relaxed shadow-subtle ${
+                    isUser
+                      ? "bg-kds-gray-800 text-white rounded-tr-none font-normal"
+                      : "bg-white text-kds-gray-900 border border-kds-gray-300 rounded-tl-none font-normal"
                   }`}
                 >
-                  {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-                </div>
-
-                <div className={`max-w-[80%] space-y-1`}>
-                  <div
-                    className={`rounded-2xl px-4 py-2.5 text-sm shadow-sm whitespace-pre-wrap ${
-                      isUser
-                        ? "bg-slate-800 text-white rounded-tr-none"
-                        : "bg-white text-slate-800 border border-slate-200 rounded-tl-none leading-relaxed"
-                    }`}
-                  >
+                  <div className="whitespace-pre-wrap">
                     {isUser ? msg.content : renderContentWithCitations(msg.content)}
                   </div>
 
+                  {/* 어시스턴트 메시지 하단 Trace 액션 */}
                   {!isUser && msg.trace_id && (
-                    <div className="flex items-center justify-start pl-1">
+                    <div className="mt-3 pt-2.5 border-t border-kds-gray-200 flex items-center justify-end">
                       <button
                         onClick={() => setActiveTraceId(msg.trace_id!)}
-                        className="flex items-center space-x-1 text-[11px] text-slate-400 hover:text-indigo-600 transition"
+                        className="inline-flex items-center space-x-1 text-[11px] font-medium text-kds-blue-700 hover:text-kds-blue-800 transition-colors"
                       >
-                        <Activity className="w-3 h-3" />
-                        <span>RAG Trace 확인</span>
+                        <SearchCode className="w-3.5 h-3.5" strokeWidth={1.75} />
+                        <span>근거 Trace 보기</span>
                       </button>
                     </div>
                   )}
@@ -262,13 +258,11 @@ export function ChatPanel() {
         )}
 
         {sendMessageMutation.isPending && (
-          <div className="flex items-start space-x-3">
-            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white flex-shrink-0">
-              <Bot className="w-4 h-4" />
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex items-center space-x-2 text-xs text-slate-500">
-              <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-              <span>관련 문서를 검색하고 답변을 생성하고 있습니다...</span>
+          <div className="flex flex-col items-start space-y-1">
+            <span className="text-[11px] font-medium text-kds-gray-500 px-1">dograc</span>
+            <div className="bg-white border border-kds-gray-300 rounded-2xl rounded-tl-none px-4 py-3 shadow-subtle flex items-center space-x-2 text-xs text-kds-gray-600">
+              <Loader2 className="w-4 h-4 text-kds-blue-700 animate-spin" strokeWidth={2} />
+              <span>문서를 검색하고 답변을 생성하고 있습니다...</span>
             </div>
           </div>
         )}
@@ -276,9 +270,9 @@ export function ChatPanel() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 입력 영역 */}
-      <div className="p-4 bg-white border-t border-slate-200">
-        <form onSubmit={handleSend} className="flex items-center space-x-2">
+      {/* 하단 입력 영역 (KDS Input Box) */}
+      <div className="p-4 bg-white border-t border-kds-gray-300">
+        <form onSubmit={handleSend} className="max-w-[960px] mx-auto flex items-center space-x-2">
           <input
             type="text"
             value={inputContent}
@@ -289,16 +283,17 @@ export function ChatPanel() {
                 handleSend();
               }
             }}
-            placeholder="문서에 대해 질문하세요..."
+            placeholder="문서 내용에 대해 질문하세요..."
             disabled={sendMessageMutation.isPending}
-            className="flex-1 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-50"
+            className="flex-1 h-11 border border-kds-gray-300 rounded-xl px-4 text-xs text-kds-gray-900 placeholder:text-kds-gray-400 focus:outline-none focus:border-kds-blue-700 disabled:bg-kds-gray-50 transition-colors"
           />
           <button
             type="submit"
             disabled={!inputContent.trim() || sendMessageMutation.isPending}
-            className="p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl disabled:opacity-40 transition flex-shrink-0"
+            className="h-11 px-4 bg-kds-blue-700 hover:bg-kds-blue-800 text-white rounded-xl text-xs font-medium inline-flex items-center space-x-1.5 transition-colors disabled:opacity-40 flex-shrink-0"
           >
-            <Send className="w-4 h-4" />
+            <span>전송</span>
+            <Send className="w-3.5 h-3.5" strokeWidth={1.75} />
           </button>
         </form>
       </div>
