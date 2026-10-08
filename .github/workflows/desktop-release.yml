@@ -30,9 +30,10 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install uv and build tools
+      - name: Install Velopack CLI and build tools
         run: |
-          pip install uv pyinstaller
+          dotnet tool install -g vpk
+          pip install uv pyinstaller velopack
 
       - name: Run Backend Tests
         run: |
@@ -58,7 +59,7 @@ jobs:
           pnpm install
           pnpm run build
 
-      - name: Build Desktop Standalone Package
+      - name: Build Desktop Standalone Package with Velopack
         run: |
           python scripts/build_desktop.py
 
@@ -67,7 +68,10 @@ jobs:
         with:
           tag_name: ${{ inputs.tag_name || github.ref_name }}
           files: |
+            artifacts/releases/dograc-win-Setup.exe
             artifacts/releases/dograc-win-Portable.zip
+            artifacts/releases/releases.win.json
+            artifacts/releases/*.nupkg
           draft: false
           prerelease: false
           generate_release_notes: true

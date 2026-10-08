@@ -299,15 +299,41 @@ class DogracLauncherApp:
                         "새 버전 출시 알림",
                         f"새로운 버전 {result.latest_version}이 게시되었습니다!\n\n"
                         f"릴리스 노트 요약:\n{result.release_notes}\n\n"
-                        "GitHub 릴리스 다운로드 페이지를 여시겠습니까?",
+                        "업데이트를 지금 다운로드하고 설치하시겠습니까?\n"
+                        "(다운로드 완료 후 앱이 자동으로 재시작됩니다)",
                     ):
-                        self.update_service.open_download_page(result.download_url)
+                        self._apply_update_async(result)
                 else:
                     messagebox.showinfo("업데이트 상태", result.message)
 
             self.root.after(0, _show_result)
 
         threading.Thread(target=_task, daemon=True).start()
+
+    def _apply_update_async(self, result) -> None:
+        self.btn_update.config(state="disabled", text="다운로드 중...")
+        self.append_log(f"[업데이트] {result.latest_version} 패키지 다운로드를 시작합니다...")
+
+        def _update_task() -> None:
+            def _progress(pct: float) -> None:
+                pct_str = f"{int(pct * 100)}%"
+                self.root.after(0, lambda: self.btn_update.config(text=f"다운로드 {pct_str}"))
+
+            try:
+                self.update_service.download_and_restart(result, on_progress=_progress)
+                self.append_log("[업데이트] 다운로드 완료 및 재시작 준비 중...")
+            except Exception as e:
+                self.append_log(f"[업데이트 오류] 다운로드 실패: {e}")
+                self.root.after(
+                    0,
+                    lambda: (
+                        self.btn_update.config(state="normal", text="업데이트 확인"),
+                        messagebox.showerror("업데이트 오류", f"업데이트 다운로드 중 오류가 발생했습니다: {e}\n\nGitHub 페이지를 엽니다."),
+                        self.update_service.open_download_page(result.download_url),
+                    ),
+                )
+
+        threading.Thread(target=_update_task, daemon=True).start()
 
     def start_all_async(self) -> None:
         self.btn_start.config(state="disabled")
