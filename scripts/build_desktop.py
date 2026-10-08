@@ -109,6 +109,21 @@ def build_standalone() -> None:
     if (ROOT_DIR / "dograc.bat").exists():
         shutil.copy(ROOT_DIR / "dograc.bat", package_dir)
 
+    # Bundle apps directory for standalone execution
+    dest_apps = package_dir / "apps"
+    if not dest_apps.exists():
+        print("독립 실행을 위해 apps 소스 및 웹 산출물 복사 중...")
+        shutil.copytree(
+            ROOT_DIR / "apps" / "api",
+            dest_apps / "api",
+            ignore=shutil.ignore_patterns(".venv", "__pycache__", ".pytest_cache", "*.pyc"),
+        )
+        shutil.copytree(
+            ROOT_DIR / "apps" / "web",
+            dest_apps / "web",
+            ignore=shutil.ignore_patterns("node_modules", ".next/cache"),
+        )
+
     # 4. Velopack Packaging
     vpk_cmd = find_vpk_tool()
     if vpk_cmd:

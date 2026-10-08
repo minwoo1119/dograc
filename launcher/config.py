@@ -1,8 +1,50 @@
 import os
+import sys
 from pathlib import Path
 
-# Repository root path
-ROOT_DIR = Path(__file__).resolve().parent.parent
+
+def find_project_root() -> Path:
+    """Intelligently resolve repository/project root in source, bundled, or installed mode."""
+    # 1. Explicit environment variable
+    env_root = os.environ.get("DOGRAC_ROOT")
+    if env_root:
+        p = Path(env_root)
+        if (p / "apps" / "api").exists():
+            return p
+
+    # 2. Running directly from source code
+    script_root = Path(__file__).resolve().parent.parent
+    if (script_root / "apps" / "api").exists():
+        return script_root
+
+    # 3. Running from PyInstaller bundle with bundled apps
+    if getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).parent
+        if (exe_dir / "apps" / "api").exists():
+            return exe_dir
+        if hasattr(sys, "_MEIPASS") and (Path(sys._MEIPASS) / "apps" / "api").exists():
+            return Path(sys._MEIPASS)
+
+    # 4. Current working directory
+    cwd = Path.cwd()
+    if (cwd / "apps" / "api").exists():
+        return cwd
+
+    # 5. Common user clone locations
+    candidates = [
+        Path.home() / "Documents" / "Github" / "dograc",
+        Path.home() / "Documents" / "dograc",
+        Path.home() / "Desktop" / "dograc",
+        Path.home() / "dograc",
+    ]
+    for cand in candidates:
+        if (cand / "apps" / "api").exists():
+            return cand
+
+    return script_root
+
+
+ROOT_DIR = find_project_root()
 
 # Apps and infra paths
 API_DIR = ROOT_DIR / "apps" / "api"

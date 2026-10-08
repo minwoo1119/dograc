@@ -261,9 +261,13 @@ class DogracLauncherApp:
             ready = self.service_manager.wait_for_services(timeout_sec=35)
             self.refresh_status_async()
 
-            self.service_manager.open_browser()
-            self.append_log("=== 서비스 준비 완료 및 브라우저 열림 ===")
-            self.set_status_text("전체 서비스 가동 완료 (브라우저 열림)")
+            if ready:
+                self.service_manager.open_browser()
+                self.append_log("=== 서비스 준비 완료 및 브라우저 열림 ===")
+                self.set_status_text("전체 서비스 가동 완료 (브라우저 열림)")
+            else:
+                self.append_log("=== 서비스 준비 실패 (로그창 오류 확인 필요) ===")
+                self.set_status_text("서비스 준비 실패")
             self.root.after(0, lambda: self.btn_start.config(state="normal"))
 
         threading.Thread(target=_task, daemon=True).start()
