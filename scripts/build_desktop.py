@@ -84,6 +84,7 @@ def build_standalone() -> None:
 
     # 3. Run PyInstaller
     entry_point = ROOT_DIR / "run_launcher.py"
+    icon_ico = ROOT_DIR / "launcher" / "assets" / "icon.ico"
     cmd = [
         sys.executable,
         "-m",
@@ -94,9 +95,12 @@ def build_standalone() -> None:
         "--name=dograc-launcher",
         f"--paths={ROOT_DIR}",
         f"--add-data={ROOT_DIR / 'infra'}{os.pathsep}infra",
+        f"--add-data={ROOT_DIR / 'launcher' / 'assets'}{os.pathsep}launcher/assets",
         f"--add-data={ROOT_DIR / '.env.example'}{os.pathsep}.",
-        str(entry_point),
     ]
+    if icon_ico.exists():
+        cmd.append(f"--icon={icon_ico}")
+    cmd.append(str(entry_point))
 
     print(f"PyInstaller 명령 실행: {' '.join(cmd)}")
     subprocess.run(cmd, cwd=str(ROOT_DIR), check=True)
@@ -141,6 +145,8 @@ def build_standalone() -> None:
             "--channel", "win",
             "--runtime", "win-x64",
         ]
+        if icon_ico.exists():
+            vpk_args.extend(["--icon", str(icon_ico)])
         print(f"실행: {' '.join(vpk_args)}")
         subprocess.run(vpk_args, check=True)
         print("\n[성공] Velopack 패키징 완료:")

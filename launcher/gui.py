@@ -3,7 +3,7 @@ import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from launcher.config import WEB_URL
+from launcher.config import ICON_ICO, LOGO_40_PNG, WEB_URL
 from launcher.services import ServiceManager
 from launcher.updater import UpdateService
 from launcher.version import __version__
@@ -13,8 +13,8 @@ class DogracLauncherApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title(f"dograc 런처 (v{__version__})")
-        self.root.geometry("640x540")
-        self.root.minsize(560, 460)
+        self.root.geometry("660x560")
+        self.root.minsize(580, 480)
 
         # Apply native Windows ttk styling
         self.style = ttk.Style()
@@ -23,6 +23,20 @@ class DogracLauncherApp:
             self.style.theme_use("vista")
         elif "winnative" in available_themes:
             self.style.theme_use("winnative")
+
+        # Set Window Titlebar and Taskbar Icon
+        self.logo_img: tk.PhotoImage | None = None
+        if ICON_ICO.exists():
+            try:
+                self.root.iconbitmap(str(ICON_ICO))
+            except Exception:
+                pass
+        if LOGO_40_PNG.exists():
+            try:
+                self.logo_img = tk.PhotoImage(file=str(LOGO_40_PNG))
+                self.root.iconphoto(True, self.logo_img)
+            except Exception:
+                self.logo_img = None
 
         self.service_manager = ServiceManager(log_callback=self.append_log)
         self.update_service = UpdateService(current_version=__version__)
@@ -67,8 +81,33 @@ class DogracLauncherApp:
         self.root.config(menu=menubar)
 
     def _build_ui(self) -> None:
-        main_frame = ttk.Frame(self.root, padding=10)
+        main_frame = ttk.Frame(self.root, padding=12)
         main_frame.pack(fill="both", expand=True)
+
+        # 0. App Logo & Title Header
+        header_frame = ttk.Frame(main_frame, padding=(2, 0, 2, 8))
+        header_frame.pack(fill="x")
+
+        if self.logo_img:
+            logo_lbl = ttk.Label(header_frame, image=self.logo_img)
+            logo_lbl.pack(side="left", padx=(0, 10))
+
+        title_box = ttk.Frame(header_frame)
+        title_box.pack(side="left", fill="y")
+
+        app_title = ttk.Label(title_box, text=f"dograc  v{__version__}", font=("맑은 고딕", 12, "bold"))
+        app_title.pack(anchor="w")
+
+        app_desc = ttk.Label(
+            title_box,
+            text="사내 기밀 보호를 위한 로컬 오픈소스 RAG 서비스 관리자",
+            font=("맑은 고딕", 8),
+            foreground="#555555",
+        )
+        app_desc.pack(anchor="w", pady=(1, 0))
+
+        header_sep = ttk.Separator(main_frame, orient="horizontal")
+        header_sep.pack(fill="x", pady=(0, 10))
 
         # 1. Service Status Group (LabelFrame)
         status_group = ttk.LabelFrame(main_frame, text=" 서비스 컴포넌트 상태 ", padding=10)

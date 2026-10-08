@@ -52,6 +52,12 @@ WEB_DIR = ROOT_DIR / "apps" / "web"
 INFRA_DIR = ROOT_DIR / "infra"
 COMPOSE_FILE = INFRA_DIR / "compose.yaml"
 
+# Asset paths (App logo and icons)
+ASSETS_DIR = ROOT_DIR / "launcher" / "assets"
+ICON_ICO = ASSETS_DIR / "icon.ico"
+ICON_PNG = ASSETS_DIR / "icon.png"
+LOGO_40_PNG = ASSETS_DIR / "logo_40.png"
+
 # Ports and URLs
 API_HOST = "127.0.0.1"
 API_PORT = 8000
