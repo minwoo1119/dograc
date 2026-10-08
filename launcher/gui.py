@@ -3,21 +3,7 @@ import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from launcher.config import (
-    KDS_AMBER_600,
-    KDS_BLUE_50,
-    KDS_BLUE_600,
-    KDS_BLUE_800,
-    KDS_GRAY_100,
-    KDS_GRAY_300,
-    KDS_GRAY_50,
-    KDS_GRAY_700,
-    KDS_GRAY_900,
-    KDS_GREEN_600,
-    KDS_RED_500,
-    KDS_WHITE,
-    WEB_URL,
-)
+from launcher.config import WEB_URL
 from launcher.services import ServiceManager
 from launcher.updater import UpdateService
 from launcher.version import __version__
@@ -26,232 +12,143 @@ from launcher.version import __version__
 class DogracLauncherApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title(f"dograc — 데스크톱 런처 (v{__version__})")
-        self.root.geometry("720x620")
-        self.root.minsize(660, 540)
-        self.root.configure(bg=KDS_GRAY_50)
+        self.root.title(f"dograc 런처 (v{__version__})")
+        self.root.geometry("640x540")
+        self.root.minsize(560, 460)
+
+        # Apply native Windows ttk styling
+        self.style = ttk.Style()
+        available_themes = self.style.theme_names()
+        if "vista" in available_themes:
+            self.style.theme_use("vista")
+        elif "winnative" in available_themes:
+            self.style.theme_use("winnative")
 
         self.service_manager = ServiceManager(log_callback=self.append_log)
         self.update_service = UpdateService(current_version=__version__)
-        self.status_labels: dict[str, tuple[tk.Label, tk.Label]] = {}
+        self.status_labels: dict[str, tuple[ttk.Label, ttk.Label]] = {}
 
+        self._build_menu()
         self._build_ui()
         self.refresh_status_async()
 
         # Handle window close
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
+    def _build_menu(self) -> None:
+        menubar = tk.Menu(self.root)
+
+        # File Menu
+        file_menu = tk.Menu(menubar, tearoff=0)
+        file_menu.add_command(label="전체 서비스 시작", command=self.start_all_async)
+        file_menu.add_command(label="전체 서비스 중지", command=self.stop_all_async)
+        file_menu.add_command(label="웹 브라우저 열기", command=self.service_manager.open_browser)
+        file_menu.add_separator()
+        file_menu.add_command(label="종료", command=self.on_close)
+        menubar.add_cascade(label="파일(F)", menu=file_menu)
+
+        # Tools Menu
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        tools_menu.add_command(label="상태 새로고침", command=self.refresh_status_async)
+        tools_menu.add_command(label="업데이트 확인", command=self.check_update_async)
+        menubar.add_cascade(label="도구(T)", menu=tools_menu)
+
+        # Help Menu
+        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(
+            label="dograc 정보",
+            command=lambda: messagebox.showinfo(
+                "dograc 정보",
+                f"dograc 데스크톱-웹 런처\n\n버전: v{__version__}\n저장소: minwoo1119/dograc\n\n로컬 오픈소스 RAG 시스템 관리 도구입니다.",
+            ),
+        )
+        menubar.add_cascade(label="도움말(H)", menu=help_menu)
+
+        self.root.config(menu=menubar)
+
     def _build_ui(self) -> None:
-        # 1. Header Frame
-        header = tk.Frame(self.root, bg=KDS_WHITE, bd=0, highlightthickness=1, highlightbackground=KDS_GRAY_300)
-        header.pack(fill="x", padx=16, pady=(16, 8))
+        main_frame = ttk.Frame(self.root, padding=10)
+        main_frame.pack(fill="both", expand=True)
 
-        header_inner = tk.Frame(header, bg=KDS_WHITE)
-        header_inner.pack(fill="x", padx=20, pady=16)
-
-        left_header = tk.Frame(header_inner, bg=KDS_WHITE)
-        left_header.pack(side="left", fill="both", expand=True)
-
-        title = tk.Label(
-            left_header,
-            text=f"dograc",
-            font=("Noto Sans KR", 20, "bold"),
-            fg=KDS_BLUE_600,
-            bg=KDS_WHITE,
-        )
-        title.pack(anchor="w")
-
-        subtitle = tk.Label(
-            left_header,
-            text="폐쇄망 및 온프레미스 환경을 위한 데스크톱-웹 RAG 런처",
-            font=("Noto Sans KR", 10),
-            fg=KDS_GRAY_700,
-            bg=KDS_WHITE,
-        )
-        subtitle.pack(anchor="w", pady=(2, 0))
-
-        # Right Header: Version Badge & Update Button
-        right_header = tk.Frame(header_inner, bg=KDS_WHITE)
-        right_header.pack(side="right", anchor="e")
-
-        version_badge = tk.Label(
-            right_header,
-            text=f"v{__version__}",
-            font=("Consolas", 10, "bold"),
-            fg=KDS_BLUE_600,
-            bg=KDS_BLUE_50,
-            padx=8,
-            pady=3,
-        )
-        version_badge.pack(anchor="e", pady=(0, 4))
-
-        self.btn_update = tk.Button(
-            right_header,
-            text="업데이트 확인",
-            command=self.check_update_async,
-            font=("Noto Sans KR", 9),
-            bg=KDS_WHITE,
-            fg=KDS_GRAY_700,
-            relief="solid",
-            bd=1,
-            padx=8,
-            pady=2,
-            cursor="hand2",
-        )
-        self.btn_update.pack(anchor="e")
-
-        # 2. Service Status Card
-        card = tk.Frame(self.root, bg=KDS_WHITE, bd=0, highlightthickness=1, highlightbackground=KDS_GRAY_300)
-        card.pack(fill="x", padx=16, pady=8)
-
-        card_inner = tk.Frame(card, bg=KDS_WHITE)
-        card_inner.pack(fill="x", padx=20, pady=16)
-
-        card_title = tk.Label(
-            card_inner,
-            text="서비스 컴포넌트 상태",
-            font=("Noto Sans KR", 12, "bold"),
-            fg=KDS_GRAY_900,
-            bg=KDS_WHITE,
-        )
-        card_title.pack(anchor="w", pady=(0, 10))
+        # 1. Service Status Group (LabelFrame)
+        status_group = ttk.LabelFrame(main_frame, text=" 서비스 컴포넌트 상태 ", padding=10)
+        status_group.pack(fill="x", pady=(0, 8))
 
         services = [
-            ("docker", "인프라 스토리지 (Docker - Postgres/Qdrant/MinIO)"),
-            ("ollama", "로컬 생성 LLM (Ollama - Qwen2.5:7b)"),
-            ("backend", "백엔드 API 서버 (FastAPI - Port 8000)"),
-            ("frontend", "프론트엔드 웹 UI (Next.js - Port 3000)"),
+            ("docker", "데이터베이스 및 인프라 (Docker: Postgres / Qdrant / MinIO)"),
+            ("ollama", "로컬 LLM 서비스 (Ollama: Qwen2.5)"),
+            ("backend", "RAG 백엔드 서버 (FastAPI: http://127.0.0.1:8000)"),
+            ("frontend", "웹 사용자 인터페이스 (Next.js: http://127.0.0.1:3000)"),
         ]
 
-        for key, name in services:
-            row = tk.Frame(card_inner, bg=KDS_WHITE)
-            row.pack(fill="x", pady=4)
+        for row, (key, label_text) in enumerate(services):
+            name_lbl = ttk.Label(status_group, text=label_text, font=("맑은 고딕", 9))
+            name_lbl.grid(row=row, column=0, sticky="w", pady=3)
 
-            indicator = tk.Label(
-                row,
-                text="●",
-                font=("Arial", 11),
-                fg=KDS_GRAY_300,
-                bg=KDS_WHITE,
-                width=2,
-            )
-            indicator.pack(side="left")
+            sep_lbl = ttk.Label(status_group, text=":", font=("맑은 고딕", 9))
+            sep_lbl.grid(row=row, column=1, padx=6, pady=3)
 
-            label_name = tk.Label(
-                row,
-                text=name,
-                font=("Noto Sans KR", 10),
-                fg=KDS_GRAY_900,
-                bg=KDS_WHITE,
-                width=42,
-                anchor="w",
-            )
-            label_name.pack(side="left")
+            val_lbl = ttk.Label(status_group, text="확인 중...", font=("맑은 고딕", 9))
+            val_lbl.grid(row=row, column=2, sticky="w", pady=3)
 
-            msg_label = tk.Label(
-                row,
-                text="확인 중...",
-                font=("Noto Sans KR", 9),
-                fg=KDS_GRAY_700,
-                bg=KDS_WHITE,
-                anchor="w",
-            )
-            msg_label.pack(side="left", fill="x", expand=True)
+            self.status_labels[key] = (name_lbl, val_lbl)
 
-            self.status_labels[key] = (indicator, msg_label)
+        status_group.columnconfigure(0, weight=1)
 
-        # 3. Action Buttons Frame
-        btn_frame = tk.Frame(self.root, bg=KDS_GRAY_50)
-        btn_frame.pack(fill="x", padx=16, pady=8)
+        # 2. Control Buttons Area
+        btn_frame = ttk.Frame(main_frame, padding=(0, 4))
+        btn_frame.pack(fill="x", pady=(0, 8))
 
-        self.btn_start = tk.Button(
-            btn_frame,
-            text="원클릭 서비스 시작 및 브라우저 열기",
-            command=self.start_all_async,
-            font=("Noto Sans KR", 11, "bold"),
-            bg=KDS_BLUE_600,
-            fg=KDS_WHITE,
-            activebackground=KDS_BLUE_800,
-            activeforeground=KDS_WHITE,
-            relief="flat",
-            padx=16,
-            pady=8,
-            cursor="hand2",
-        )
-        self.btn_start.pack(side="left", padx=(0, 8))
+        self.btn_start = ttk.Button(btn_frame, text="전체 서비스 시작", command=self.start_all_async)
+        self.btn_start.pack(side="left", padx=(0, 6))
 
-        self.btn_browser = tk.Button(
-            btn_frame,
-            text="웹 브라우저 열기",
-            command=self.service_manager.open_browser,
-            font=("Noto Sans KR", 10),
-            bg=KDS_WHITE,
-            fg=KDS_BLUE_600,
-            activebackground=KDS_BLUE_50,
-            relief="solid",
-            bd=1,
-            padx=12,
-            pady=8,
-            cursor="hand2",
-        )
-        self.btn_browser.pack(side="left", padx=(0, 8))
+        self.btn_browser = ttk.Button(btn_frame, text="브라우저 열기", command=self.service_manager.open_browser)
+        self.btn_browser.pack(side="left", padx=(0, 6))
 
-        self.btn_refresh = tk.Button(
-            btn_frame,
-            text="상태 새로고침",
-            command=self.refresh_status_async,
-            font=("Noto Sans KR", 10),
-            bg=KDS_WHITE,
-            fg=KDS_GRAY_700,
-            relief="solid",
-            bd=1,
-            padx=12,
-            pady=8,
-            cursor="hand2",
-        )
-        self.btn_refresh.pack(side="left", padx=(0, 8))
+        self.btn_refresh = ttk.Button(btn_frame, text="상태 새로고침", command=self.refresh_status_async)
+        self.btn_refresh.pack(side="left", padx=(0, 6))
 
-        self.btn_stop = tk.Button(
-            btn_frame,
-            text="전체 중지",
-            command=self.stop_all_async,
-            font=("Noto Sans KR", 10),
-            bg=KDS_WHITE,
-            fg=KDS_RED_500,
-            relief="solid",
-            bd=1,
-            padx=12,
-            pady=8,
-            cursor="hand2",
-        )
+        self.btn_update = ttk.Button(btn_frame, text="업데이트 확인", command=self.check_update_async)
+        self.btn_update.pack(side="left", padx=(0, 6))
+
+        self.btn_stop = ttk.Button(btn_frame, text="전체 중지", command=self.stop_all_async)
         self.btn_stop.pack(side="right")
 
-        # 4. Console Log Card
-        log_card = tk.Frame(self.root, bg=KDS_WHITE, bd=0, highlightthickness=1, highlightbackground=KDS_GRAY_300)
-        log_card.pack(fill="both", expand=True, padx=16, pady=(8, 16))
+        # 3. Log Output Group (LabelFrame)
+        log_group = ttk.LabelFrame(main_frame, text=" 실행 로그 ", padding=6)
+        log_group.pack(fill="both", expand=True, pady=(0, 4))
 
-        log_inner = tk.Frame(log_card, bg=KDS_WHITE)
-        log_inner.pack(fill="both", expand=True, padx=16, pady=12)
+        log_container = ttk.Frame(log_group)
+        log_container.pack(fill="both", expand=True)
 
-        log_title = tk.Label(
-            log_inner,
-            text="실시간 실행 로그",
-            font=("Noto Sans KR", 10, "bold"),
-            fg=KDS_GRAY_900,
-            bg=KDS_WHITE,
-        )
-        log_title.pack(anchor="w", pady=(0, 6))
-
+        scrollbar = ttk.Scrollbar(log_container, orient="vertical")
         self.log_text = tk.Text(
-            log_inner,
+            log_container,
             wrap="word",
-            bg=KDS_GRAY_100,
-            fg=KDS_GRAY_900,
+            bg="#FFFFFF",
+            fg="#222222",
             font=("Consolas", 9),
-            bd=0,
-            relief="flat",
+            bd=1,
+            relief="sunken",
+            yscrollcommand=scrollbar.set,
         )
-        self.log_text.pack(fill="both", expand=True)
+        scrollbar.config(command=self.log_text.yview)
+
+        scrollbar.pack(side="right", fill="y")
+        self.log_text.pack(side="left", fill="both", expand=True)
+
+        # 4. Status Bar
+        self.status_bar = ttk.Frame(self.root, padding=(8, 3))
+        self.status_bar.pack(fill="x", side="bottom")
+
+        sep = ttk.Separator(self.root, orient="horizontal")
+        sep.pack(fill="x", side="bottom")
+
+        self.status_msg = ttk.Label(self.status_bar, text="준비 완료", font=("맑은 고딕", 9))
+        self.status_msg.pack(side="left")
+
+        ver_label = ttk.Label(self.status_bar, text=f"버전: v{__version__}", font=("맑은 고딕", 9))
+        ver_label.pack(side="right")
 
     def append_log(self, text: str) -> None:
         def _update() -> None:
@@ -260,16 +157,21 @@ class DogracLauncherApp:
 
         self.root.after(0, _update)
 
+    def set_status_text(self, text: str) -> None:
+        self.root.after(0, lambda: self.status_msg.config(text=text))
+
     def update_status_indicator(self, key: str, is_ready: bool, message: str) -> None:
         def _update() -> None:
             if key in self.status_labels:
-                ind, lbl = self.status_labels[key]
-                ind.config(fg=KDS_GREEN_600 if is_ready else KDS_RED_500)
-                lbl.config(text=message)
+                _, val_lbl = self.status_labels[key]
+                prefix = "● " if is_ready else "○ "
+                val_lbl.config(text=f"{prefix}{message}")
 
         self.root.after(0, _update)
 
     def refresh_status_async(self) -> None:
+        self.set_status_text("서비스 상태 확인 중...")
+
         def _task() -> None:
             docker_st = self.service_manager.check_docker()
             self.update_status_indicator("docker", docker_st.is_ready, docker_st.message)
@@ -283,52 +185,58 @@ class DogracLauncherApp:
             frontend_st = self.service_manager.check_frontend()
             self.update_status_indicator("frontend", frontend_st.is_ready, frontend_st.message)
 
+            self.set_status_text("상태 새로고침 완료")
+
         threading.Thread(target=_task, daemon=True).start()
 
     def check_update_async(self) -> None:
-        self.btn_update.config(state="disabled", text="확인 중...")
+        self.btn_update.config(state="disabled")
+        self.set_status_text("최신 버전 확인 중...")
 
         def _task() -> None:
             result = self.update_service.check_for_updates()
             self.append_log(f"[업데이트] {result.message}")
 
             def _show_result() -> None:
-                self.btn_update.config(state="normal", text="업데이트 확인")
+                self.btn_update.config(state="normal")
+                self.set_status_text("최신 상태" if not result.has_update else "새 버전 발견")
                 if result.has_update:
                     if messagebox.askyesno(
                         "새 버전 출시 알림",
-                        f"새로운 버전 {result.latest_version}이 게시되었습니다!\n\n"
-                        f"릴리스 노트 요약:\n{result.release_notes}\n\n"
+                        f"새로운 버전 {result.latest_version}이 출시되었습니다.\n\n"
+                        f"릴리스 내용:\n{result.release_notes}\n\n"
                         "업데이트를 지금 다운로드하고 설치하시겠습니까?\n"
-                        "(다운로드 완료 후 앱이 자동으로 재시작됩니다)",
+                        "(다운로드 후 앱이 자동으로 재시작됩니다)",
                     ):
                         self._apply_update_async(result)
                 else:
-                    messagebox.showinfo("업데이트 상태", result.message)
+                    messagebox.showinfo("업데이트 확인", result.message)
 
             self.root.after(0, _show_result)
 
         threading.Thread(target=_task, daemon=True).start()
 
     def _apply_update_async(self, result) -> None:
-        self.btn_update.config(state="disabled", text="다운로드 중...")
-        self.append_log(f"[업데이트] {result.latest_version} 패키지 다운로드를 시작합니다...")
+        self.btn_update.config(state="disabled")
+        self.set_status_text("새 버전 다운로드 중...")
+        self.append_log(f"[업데이트] {result.latest_version} 다운로드 시작...")
 
         def _update_task() -> None:
             def _progress(pct: float) -> None:
                 pct_str = f"{int(pct * 100)}%"
-                self.root.after(0, lambda: self.btn_update.config(text=f"다운로드 {pct_str}"))
+                self.set_status_text(f"업데이트 다운로드 중: {pct_str}")
 
             try:
                 self.update_service.download_and_restart(result, on_progress=_progress)
-                self.append_log("[업데이트] 다운로드 완료 및 재시작 준비 중...")
+                self.set_status_text("다운로드 완료. 재시작 중...")
             except Exception as e:
                 self.append_log(f"[업데이트 오류] 다운로드 실패: {e}")
+                self.set_status_text("업데이트 실패")
                 self.root.after(
                     0,
                     lambda: (
-                        self.btn_update.config(state="normal", text="업데이트 확인"),
-                        messagebox.showerror("업데이트 오류", f"업데이트 다운로드 중 오류가 발생했습니다: {e}\n\nGitHub 페이지를 엽니다."),
+                        self.btn_update.config(state="normal"),
+                        messagebox.showerror("업데이트 오류", f"업데이트 중 오류가 발생했습니다: {e}\n\nGitHub 다운로드 페이지를 엽니다."),
                         self.update_service.open_download_page(result.download_url),
                     ),
                 )
@@ -337,40 +245,41 @@ class DogracLauncherApp:
 
     def start_all_async(self) -> None:
         self.btn_start.config(state="disabled")
+        self.set_status_text("서비스 시작 중...")
 
         def _task() -> None:
-            self.append_log("=== 원클릭 오케스트레이션 시작 ===")
-            # 1. Start Docker
+            self.append_log("=== 전체 서비스 가동 시작 ===")
             self.service_manager.start_docker_infrastructure()
-            # 2. Check Ollama
+
             ollama_st = self.service_manager.check_ollama()
             if not ollama_st.is_ready:
                 self.append_log("[안내] Ollama 서비스가 미응답 상태입니다. 로컬 Ollama를 실행해 주세요.")
-            # 3. Start Backend
+
             self.service_manager.start_backend()
-            # 4. Start Frontend
             self.service_manager.start_frontend()
 
-            # 5. Wait for readiness
             ready = self.service_manager.wait_for_services(timeout_sec=35)
             self.refresh_status_async()
 
-            # 6. Open browser
             self.service_manager.open_browser()
-            self.append_log("=== 서비스 준비 완료 및 브라우저 오픈 완료 ===")
+            self.append_log("=== 서비스 준비 완료 및 브라우저 열림 ===")
+            self.set_status_text("전체 서비스 가동 완료 (브라우저 열림)")
             self.root.after(0, lambda: self.btn_start.config(state="normal"))
 
         threading.Thread(target=_task, daemon=True).start()
 
     def stop_all_async(self) -> None:
+        self.set_status_text("전체 서비스 중지 중...")
+
         def _task() -> None:
             self.service_manager.stop_all()
             self.refresh_status_async()
+            self.set_status_text("전체 서비스 중지 완료")
 
         threading.Thread(target=_task, daemon=True).start()
 
     def on_close(self) -> None:
-        if messagebox.askokcancel("종료", "dograc 런처를 종료하시겠습니까? (백그라운드 서비스가 정리됩니다)"):
+        if messagebox.askokcancel("종료", "dograc 런처를 종료하시겠습니까?\n실행 중인 서비스 프로세스가 정리됩니다."):
             self.service_manager.stop_all()
             self.root.destroy()
             sys.exit(0)
