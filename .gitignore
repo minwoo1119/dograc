@@ -22,3 +22,9 @@ coverage/
 .DS_Store
 Thumbs.db
 
+# Build artifacts & Packaging
+build/
+dist/
+artifacts/
+*.spec
+

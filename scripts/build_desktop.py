@@ -22,11 +22,20 @@ def build_standalone() -> None:
     print("=" * 60)
 
     # 1. Check or install PyInstaller
-    pyinstaller_cmd = shutil.which("pyinstaller")
+    venv_pyinstaller = Path(sys.executable).parent / ("pyinstaller.exe" if sys.platform.startswith("win") else "pyinstaller")
+    if venv_pyinstaller.exists():
+        pyinstaller_cmd = str(venv_pyinstaller)
+    else:
+        pyinstaller_cmd = shutil.which("pyinstaller")
+
     if not pyinstaller_cmd:
         print("[안내] PyInstaller를 설치합니다...")
-        subprocess.run([sys.executable, "-m", "pip", "install", "pyinstaller"], check=True)
-        pyinstaller_cmd = shutil.which("pyinstaller") or "pyinstaller"
+        uv_cmd = shutil.which("uv")
+        if uv_cmd:
+            subprocess.run([uv_cmd, "pip", "install", "pyinstaller"], cwd=str(ROOT_DIR / "apps" / "api"), check=True)
+        else:
+            subprocess.run([sys.executable, "-m", "pip", "install", "pyinstaller"], check=True)
+        pyinstaller_cmd = str(venv_pyinstaller) if venv_pyinstaller.exists() else (shutil.which("pyinstaller") or "pyinstaller")
 
     # 2. Clean previous build artifacts
     if DIST_DIR.exists():
