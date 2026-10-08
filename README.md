@@ -12,9 +12,9 @@
   <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql" alt="PostgreSQL" />
   <img src="https://img.shields.io/badge/Qdrant-Vector_DB-DC2626?style=flat-square" alt="Qdrant" />
   <img src="https://img.shields.io/badge/Ollama-Local_LLM-purple?style=flat-square" alt="Ollama" />
-  <img src="https://img.shields.io/badge/Design_System-KDS_Reading_First-5055B1?style=flat-square" alt="KDS" />
+  <img src="https://img.shields.io/badge/Velopack-1.2.161-6F42C1?style=flat-square" alt="Velopack" />
   <img src="https://img.shields.io/badge/Architecture-Clean_Modular-2F855A?style=flat-square" alt="Clean Modular" />
-  <img src="https://img.shields.io/badge/Tests-pytest_56_passed-009688?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-pytest_59_passed-009688?style=flat-square" alt="Tests" />
 </p>
 
 </div>
@@ -137,25 +137,50 @@ flowchart TD
 | 영역 | 기술 스택 | 역할 |
 | :--- | :--- | :--- |
 | **Desktop Launcher** | **Python 3.12**, Tkinter, PyInstaller | Windows/macOS 원클릭 데스크톱 런처 및 서비스 수명주기 오케스트레이터 |
+| **Packaging & Update** | **Velopack 1.2.161**, GitHub Actions | Windows x64 원클릭 설치·Portable 패키지와 GitHub Releases 자동 델타 업데이트 |
 | **Frontend Web** | **Next.js 14 (App Router)**, React 18, TypeScript, Tailwind CSS, TanStack Query v5, Zustand, Lucide Icons | KDS 디자인 시스템 기반 Reading-First 고가독성 SPA |
 | **Backend API** | **FastAPI 0.115**, SQLAlchemy 2.0 (Async), Alembic, Pydantic v2 | 비동기 고성능 RAG 백엔드 서버 및 트레이스 영속화 |
 | **Storage** | **PostgreSQL 16**, **Qdrant**, **MinIO (S3 Compatible)** | 워크스페이스 메타데이터, 벡터 인덱스, 문서 원본 불변 보관 |
 | **AI / RAG** | **Ollama** (`qwen2.5:7b`), **vLLM**, `BAAI/bge-m3`, PyMuPDF | 모듈형 로컬 임베딩 및 오픈소스 LLM 추론 |
-| **Tooling & Test** | **Docker & Docker Compose**, **uv**, **pnpm**, **pytest** (56 passing) | 재현 가능한 격리형 로컬 개발 환경 및 자동화 테스트 |
+| **Tooling & Test** | **Docker & Docker Compose**, **uv**, **pnpm**, **pytest** (59 passing) | 재현 가능한 격리형 로컬 개발 환경 및 자동화 테스트 |
 
 ---
 
-## 5. 다운로드 및 업데이트 (Download & Update)
+## 5. 다운로드 및 설치 가이드 (Download & Installation)
 
-최신 데스크톱 실행본은 [GitHub Releases](https://github.com/minwoo1119/dograc/releases/latest)에서 받을 수 있습니다.
+최신 공식 릴리스는 [GitHub Releases](https://github.com/minwoo1119/dograc/releases/latest)에서 다운로드할 수 있습니다.
 
-| 배포 파일 | 용도 |
-| :--- | :--- |
-| `dograc-win-Portable.zip` | 설치 없이 압축을 풀어 즉시 실행하는 Windows x64 휴대용 배포본 |
-| `dograc.bat` | 소스 저장소 클론 후 Windows에서 즉시 더블클릭 실행하는 배치 런처 |
-| `dograc.command` | 소스 저장소 클론 후 macOS Finder에서 즉시 더블클릭 실행하는 쉘 런처 |
+### 어떤 파일을 다운로드해야 하나요?
 
-설치된 앱에서는 데스크톱 런처 상단의 **[업데이트 확인]** 버튼을 클릭하면 GitHub Releases의 최신 버전을 확인합니다. 새 버전이 있으면 릴리스 노트 요약과 함께 다운로드 페이지로 안전하게 안내합니다.
+| 배포 파일명 | 파일 크기 | 권장 대상 및 용도 | 주요 특징 |
+| :--- | :--- | :--- | :--- |
+| [**`dograc-win-Setup.exe`**](https://github.com/minwoo1119/dograc/releases/latest/download/dograc-win-Setup.exe) | 약 23 MB | **일반 사용자 (가장 권장)**<br/>Windows x64 원클릭 설치 프로그램 | • 더블클릭 시 사용자 폴더에 자동 설치 완료<br/>• 시작 메뉴 및 바탕화면 바로가기 등록<br/>• **앱 내 원클릭 자동 델타 업데이트 및 재시작 지원** |
+| [**`dograc-win-Portable.zip`**](https://github.com/minwoo1119/dograc/releases/latest/download/dograc-win-Portable.zip) | 약 16 MB | **무설치 환경 선호 사용자**<br/>Windows x64 휴대용 압축 패키지 | • 별도 설치 없이 압축 해제 후 즉시 실행<br/>• 시스템 레지스트리/프로그램 폴더 미변경<br/>• USB 등 이동식 드라이브 활용 가능 |
+| `dograc.bat` / `dograc.command` | 소스 코드 | **개발자**<br/>Git 저장소 클론 후 직접 실행 | • 로컬 Python 가상환경 및 개발 코드 직접 실행 |
+
+---
+
+### 실행 방법 안내
+
+#### 1) 권장: `dograc-win-Setup.exe`로 설치하여 실행하기
+1. 최신 [**`dograc-win-Setup.exe`**](https://github.com/minwoo1119/dograc/releases/latest/download/dograc-win-Setup.exe)를 다운로드합니다.
+2. 다운로드한 파일을 더블클릭합니다. 별도의 복잡한 절차 없이 사용자 환경(`%LOCALAPPDATA%\Programs\dograc`)에 즉시 설치됩니다.
+3. 바탕화면 또는 시작 메뉴의 **`dograc`** 아이콘을 실행하면 런처가 열립니다.
+4. 런처 화면에서 **[전체 서비스 시작]**을 누르면 모든 백그라운드 서비스가 기동되고 웹 브라우저(`http://localhost:3000`)가 자동으로 열립니다.
+
+#### 2) 무설치: `dograc-win-Portable.zip`으로 실행하기
+1. 최신 [**`dograc-win-Portable.zip`**](https://github.com/minwoo1119/dograc/releases/latest/download/dograc-win-Portable.zip)을 다운로드합니다.
+2. 원하는 작업 폴더에 압축을 풉니다.
+3. 폴더 내의 `dograc-launcher.exe`를 더블클릭하여 실행합니다.
+
+---
+
+### 자동 업데이트 방법
+
+Velopack 기반으로 설치된 앱(`dograc-win-Setup.exe`로 설치한 경우)은 다음과 같이 쉽게 업데이트할 수 있습니다:
+1. 런처 대시보드 상단의 **[업데이트 확인]** 버튼을 클릭합니다.
+2. 새로운 버전이 감지되면 릴리스 노트 요약과 함께 다운로드 여부를 묻는 대화상자가 표시됩니다.
+3. **[예]**를 누르면 다운로드 진행률(%)이 표시되며, 완료 후 앱이 자동으로 재시작되어 최신 버전으로 업데이트됩니다.
 
 ---
 
