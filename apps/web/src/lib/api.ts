@@ -11,6 +11,7 @@ import {
 import { toast } from "@/lib/toast";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 async function request<T>(
   path: string,
@@ -19,9 +20,8 @@ async function request<T>(
 ): Promise<T> {
   const headers = new Headers(options.headers || {});
   
-  if (userId) {
-    headers.set("X-User-ID", userId);
-  }
+  const effectiveUserId = userId || (typeof window !== "undefined" ? localStorage.getItem("dograc_user_id") : null) || DEFAULT_USER_ID;
+  headers.set("X-User-ID", effectiveUserId);
 
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("dograc_token");

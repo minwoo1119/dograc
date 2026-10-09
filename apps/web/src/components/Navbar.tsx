@@ -6,7 +6,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { Plus, ChevronDown, Trash2, Settings2, Sparkles } from "lucide-react";
-import { AuthModal } from "@/components/AuthModal";
 import { OllamaGuideModal } from "@/components/OllamaGuideModal";
 import { ProPricingModal } from "@/components/ProPricingModal";
 
@@ -26,7 +25,6 @@ export function Navbar() {
 
   const [isCreating, setIsCreating] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [showOllamaGuide, setShowOllamaGuide] = useState(false);
   const [showPricingModal, setShowPricingModal] = useState(false);
 
@@ -175,37 +173,19 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* 우측 사용자 세션 정보 */}
+        {/* 우측 사용자 세션 정보 (로컬 단일 사용자 모드) */}
         <div className="flex items-center space-x-3">
-          {currentUser ? (
-            <>
-              <div
-                className="flex items-center space-x-2.5 bg-kds-gray-50 border border-kds-gray-300 rounded-lg px-3 h-10 text-xs sm:text-sm"
-                title={`${currentUser.email} (${currentUser.id})`}
-              >
-                <div className="w-6 h-6 rounded-full bg-kds-blue-600 text-white flex items-center justify-center text-[11px] font-bold select-none">
-                  {currentUser.username[0]?.toUpperCase() || "U"}
-                </div>
-                <span className="font-semibold text-kds-gray-900">
-                  {currentUser.username}
-                </span>
-              </div>
-              <button
-                onClick={() => logout()}
-                className="h-10 px-4 rounded-lg border border-kds-gray-300 bg-white hover:bg-kds-gray-100 text-kds-gray-700 text-xs sm:text-sm font-medium transition-colors"
-                title="로그아웃"
-              >
-                로그아웃
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="h-10 px-5 rounded-lg bg-kds-blue-600 hover:bg-kds-blue-800 text-white text-xs sm:text-sm font-semibold transition-colors shadow-sm"
-            >
-              로그인
-            </button>
-          )}
+          <div
+            className="flex items-center space-x-2 bg-kds-gray-50 border border-kds-gray-300 rounded-lg px-3 h-10 text-xs sm:text-sm"
+            title="로컬 단일 사용자 세션"
+          >
+            <div className="w-5 h-5 rounded-full bg-kds-blue-600 text-white flex items-center justify-center text-[10px] font-bold select-none">
+              L
+            </div>
+            <span className="font-semibold text-kds-gray-900">
+              로컬 사용자
+            </span>
+          </div>
         </div>
       </div>
 
@@ -256,12 +236,6 @@ export function Navbar() {
           </div>
         </div>
       )}
-
-      {/* 로그인 및 회원가입 모달 */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-      />
 
       {/* Ollama 모델 세팅 가이드 모달 */}
       <OllamaGuideModal

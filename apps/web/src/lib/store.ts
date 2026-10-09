@@ -32,17 +32,23 @@ interface AppState {
 }
 
 const DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000001";
+export const DEFAULT_USER: User = {
+  id: DEFAULT_USER_ID,
+  email: "local@dograc.internal",
+  username: "로컬 사용자",
+  created_at: "2026-01-01T00:00:00.000Z",
+};
 const DEFAULT_OLLAMA_ENDPOINT = "http://localhost:11434";
 const DEFAULT_OLLAMA_MODEL = "qwen2.5:7b";
 const DEFAULT_SERVER_MODEL = "Qwen 2.5 32B (클라우드 고성능 GPU)";
 
-function getInitialUser(): User | null {
-  if (typeof window === "undefined") return null;
+function getInitialUser(): User {
+  if (typeof window === "undefined") return DEFAULT_USER;
   try {
     const raw = localStorage.getItem("dograc_user");
-    return raw ? JSON.parse(raw) : null;
+    return raw ? JSON.parse(raw) : DEFAULT_USER;
   } catch {
-    return null;
+    return DEFAULT_USER;
   }
 }
 
@@ -122,7 +128,7 @@ export const useAppStore = create<AppState>((set) => ({
       localStorage.removeItem("dograc_user_id");
     }
     set({
-      currentUser: null,
+      currentUser: DEFAULT_USER,
       token: null,
       userId: DEFAULT_USER_ID,
       currentWorkspaceId: null,

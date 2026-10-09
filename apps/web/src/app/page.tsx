@@ -5,28 +5,23 @@ import { Navbar } from "@/components/Navbar";
 import { DocumentPanel } from "@/components/DocumentPanel";
 import { ChatPanel } from "@/components/ChatPanel";
 import { TraceDrawer } from "@/components/TraceDrawer";
-import { LandingPage } from "@/components/LandingPage";
-import { useAppStore } from "@/lib/store";
 
 export default function Home() {
-  const { currentUser } = useAppStore();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // 마운트 전 서버 렌더링 시에는 랜딩 페이지를 기본 제공하여 Hydration mismatch 방지
   if (!mounted) {
-    return <LandingPage />;
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-kds-gray-50 text-kds-gray-700 text-sm">
+        dograc RAG 작업대 준비 중...
+      </div>
+    );
   }
 
-  // 비로그인 사용자: 스크롤 가능한 소개 랜딩 페이지 노출
-  if (!currentUser) {
-    return <LandingPage />;
-  }
-
-  // 로그인 사용자: RAG 2열 작업대 노출
+  // 로그인 없이 즉시 RAG 2열 메인 작업대 화면 노출
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-kds-gray-50">
       <Navbar />
