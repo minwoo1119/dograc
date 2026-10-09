@@ -1,8 +1,9 @@
-import asyncio
 import os
 import shutil
+import socket
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -13,13 +14,18 @@ from typing import Callable
 
 from launcher.config import (
     API_DIR,
+    API_HEALTH_LIVE_URL,
     API_HEALTH_READY_URL,
+    API_HOST,
     API_PORT,
     API_URL,
     COMPOSE_FILE,
+    OLLAMA_HOST,
+    OLLAMA_PORT,
     OLLAMA_TAGS_URL,
     ROOT_DIR,
     WEB_DIR,
+    WEB_HOST,
     WEB_PORT,
     WEB_URL,
 )
@@ -71,6 +77,37 @@ def find_executable(name: str) -> str | None:
     return None
 
 
+def kill_process_tree(proc: subprocess.Popen | None) -> None:
+    """Safely terminate a process and all of its descendants (preventing orphan port locking)."""
+    if proc is None:
+        return
+    try:
+        if proc.poll() is None:
+            if sys.platform.startswith("win"):
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                    capture_output=True,
+                    check=False,
+                )
+            else:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+    except Exception:
+        pass
+
+
+def is_port_open(host: str, port: int, timeout: float = 0.6) -> bool:
+    """Quickly check if a TCP port is open and accepting socket connections."""
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except Exception:
+        return False
+
+
 class ServiceManager:
     def __init__(self, log_callback: Callable[[str], None] | None = None) -> None:
         self.log_callback = log_callback or (lambda msg: print(msg))
@@ -79,6 +116,30 @@ class ServiceManager:
 
     def log(self, message: str) -> None:
         self.log_callback(f"[{time.strftime('%H:%M:%S')}] {message}")
+
+    def _stream_process_output(self, process: subprocess.Popen, prefix: str) -> threading.Thread:
+        """Asynchronously stream process stdout/stderr line-by-line to UI log to prevent pipe buffer deadlock."""
+        def _reader() -> None:
+            try:
+                if process.stdout:
+                    for line in iter(process.stdout.readline, ""):
+                        if not line:
+                            break
+                        clean_line = line.rstrip()
+                        if clean_line:
+                            self.log(f"[{prefix}] {clean_line}")
+            except Exception:
+                pass
+            finally:
+                if process.stdout:
+                    try:
+                        process.stdout.close()
+                    except Exception:
+                        pass
+
+        t = threading.Thread(target=_reader, daemon=True)
+        t.start()
+        return t
 
     def ensure_env_file(self) -> None:
         env_file = ROOT_DIR / ".env"
@@ -179,11 +240,11 @@ class ServiceManager:
             return False
 
     def check_ollama(self) -> ServiceStatus:
-        if self.is_url_accessible(OLLAMA_TAGS_URL):
+        if self.is_url_accessible(OLLAMA_TAGS_URL, timeout=1.0) or is_port_open(OLLAMA_HOST, OLLAMA_PORT):
             return ServiceStatus(
                 name="로컬 생성 LLM (Ollama)",
                 is_ready=True,
-                message="로컬 Ollama 서비스 연결됨 (127.0.0.1:11434)",
+                message=f"로컬 Ollama 서비스 연결됨 ({OLLAMA_HOST}:{OLLAMA_PORT})",
             )
         return ServiceStatus(
             name="로컬 생성 LLM (Ollama)",
@@ -192,17 +253,26 @@ class ServiceManager:
         )
 
     def check_backend(self) -> ServiceStatus:
-        if self.is_url_accessible(API_HEALTH_READY_URL):
+        # 1. Full readiness (FastAPI + DB + Storage + VectorDB all healthy)
+        if self.is_url_accessible(API_HEALTH_READY_URL, timeout=1.0):
             return ServiceStatus(
                 name="백엔드 API 서버 (FastAPI)",
                 is_ready=True,
                 message=f"정상 준비 완료 ({API_URL})",
             )
-        if self.is_url_accessible(API_URL):
+        # 2. Live (FastAPI server is running and responding to /live)
+        if self.is_url_accessible(API_HEALTH_LIVE_URL, timeout=1.0):
             return ServiceStatus(
                 name="백엔드 API 서버 (FastAPI)",
-                is_ready=False,
-                message="서버 응답 중이나 종속성 준비 중",
+                is_ready=True,
+                message=f"FastAPI 가동 중 ({API_URL})",
+            )
+        # 3. Port open socket connection
+        if is_port_open(API_HOST, API_PORT):
+            return ServiceStatus(
+                name="백엔드 API 서버 (FastAPI)",
+                is_ready=True,
+                message=f"포트 응답 중 ({API_URL})",
             )
         return ServiceStatus(
             name="백엔드 API 서버 (FastAPI)",
@@ -211,7 +281,8 @@ class ServiceManager:
         )
 
     def check_frontend(self) -> ServiceStatus:
-        if self.is_url_accessible(WEB_URL):
+        # Check port 3000 socket or HTTP response
+        if is_port_open(WEB_HOST, WEB_PORT) or self.is_url_accessible(WEB_URL, timeout=1.0):
             return ServiceStatus(
                 name="프론트엔드 웹 UI (Next.js)",
                 is_ready=True,
@@ -235,17 +306,21 @@ class ServiceManager:
         self.ensure_env_file()
         self.log("백엔드 API 서버 구동 시작...")
 
-        # Find uv or python
+        is_win = sys.platform.startswith("win")
+        # 1. Prioritize existing virtualenv python directly (fastest, no uv lock overhead)
+        venv_py = API_DIR / ".venv" / ("Scripts/python.exe" if is_win else "bin/python")
         uv_cmd = find_executable("uv")
-        venv_py = API_DIR / ".venv" / ("Scripts" / "python.exe" if sys.platform.startswith("win") else "bin" / "python")
 
-        if uv_cmd:
-            cmd = [uv_cmd, "run", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(API_PORT)]
-        elif venv_py.exists():
+        if venv_py.exists():
             cmd = [str(venv_py), "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(API_PORT)]
+            self.log(f"가상환경 Python으로 백엔드 가동: {venv_py.name}")
+        elif uv_cmd:
+            cmd = [uv_cmd, "run", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(API_PORT)]
+            self.log("uv 패키지 매니저로 백엔드 가동")
         else:
             python_cmd = sys.executable
             cmd = [python_cmd, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(API_PORT)]
+            self.log(f"시스템 Python으로 백엔드 가동: {python_cmd}")
 
         try:
             self.backend_process = subprocess.Popen(
@@ -254,8 +329,11 @@ class ServiceManager:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 bufsize=1,
             )
+            self._stream_process_output(self.backend_process, "백엔드")
             self.log(f"백엔드 프로세스 시작됨 (PID: {self.backend_process.pid})")
             return True
         except Exception as e:
@@ -272,19 +350,38 @@ class ServiceManager:
             return False
 
         self.log("프론트엔드 웹 UI 구동 시작...")
+        is_win = sys.platform.startswith("win")
+
+        # 1. Prioritize direct node execution of next.js (cleanest process tree, no cmd shell)
+        node_cmd = find_executable("node")
+        next_script = WEB_DIR / "node_modules" / "next" / "dist" / "bin" / "next"
+        next_bin = WEB_DIR / "node_modules" / ".bin" / ("next.cmd" if is_win else "next")
         pnpm_cmd = find_executable("pnpm")
         npx_cmd = find_executable("npx")
         npm_cmd = find_executable("npm")
 
-        is_win = sys.platform.startswith("win")
-        if pnpm_cmd:
+        use_shell = False
+        if node_cmd and next_script.exists():
+            cmd = [node_cmd, str(next_script), "dev", "--port", str(WEB_PORT)]
+            self.log("Node.js 런타임으로 Next.js 직접 가동")
+        elif next_bin.exists():
+            cmd = [str(next_bin), "dev", "--port", str(WEB_PORT)]
+            self.log(f"로컬 Next.js 바이너리로 가동: {next_bin.name}")
+            use_shell = is_win
+        elif pnpm_cmd:
             cmd = [pnpm_cmd, "run", "dev"]
+            self.log("pnpm으로 프론트엔드 가동")
+            use_shell = is_win
         elif npx_cmd:
             cmd = [npx_cmd, "pnpm", "run", "dev"]
+            self.log("npx pnpm으로 프론트엔드 가동")
+            use_shell = is_win
         elif npm_cmd:
             cmd = [npm_cmd, "run", "dev"]
+            self.log("npm으로 프론트엔드 가동")
+            use_shell = is_win
         else:
-            self.log("[오류] Node.js 패키지 매니저(pnpm/npx/npm)를 찾을 수 없습니다. Node.js 설치를 확인해 주세요.")
+            self.log("[오류] Node.js 실행 환경(node/next/pnpm/npm)을 찾을 수 없습니다. Node.js 설치를 확인해 주세요.")
             return False
 
         try:
@@ -294,9 +391,12 @@ class ServiceManager:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 bufsize=1,
-                shell=is_win,
+                shell=use_shell,
             )
+            self._stream_process_output(self.frontend_process, "프론트엔드")
             self.log(f"프론트엔드 프로세스 시작됨 (PID: {self.frontend_process.pid})")
             return True
         except Exception as e:
@@ -310,10 +410,7 @@ class ServiceManager:
         while time.time() - start_time < timeout_sec:
             # Check if processes crashed prematurely
             if self.backend_process and self.backend_process.poll() is not None:
-                out = self.backend_process.stdout.read() if self.backend_process.stdout else ""
                 self.log(f"[오류] 백엔드 프로세스가 예기치 않게 종료되었습니다 (종료 코드: {self.backend_process.poll()}).")
-                if out:
-                    self.log(f"백엔드 출력: {out[:300].strip()}")
                 return False
 
             if self.frontend_process and self.frontend_process.poll() is not None:
@@ -325,7 +422,7 @@ class ServiceManager:
             if backend_ok and frontend_ok:
                 self.log("모든 서비스 준비 완료!")
                 return True
-            time.sleep(1.5)
+            time.sleep(1.0)
 
         self.log("[경고] 서비스 준비 대기 시간 초과.")
         return False
@@ -336,20 +433,14 @@ class ServiceManager:
 
     def stop_all(self) -> None:
         self.log("실행 중인 모든 데몬 및 프로세스 정리 중...")
-        if self.frontend_process and self.frontend_process.poll() is None:
-            self.log("프론트엔드 프로세스 종료...")
-            try:
-                self.frontend_process.terminate()
-            except Exception:
-                pass
+        if self.frontend_process:
+            self.log(f"프론트엔드 프로세스(PID: {self.frontend_process.pid}) 트리 강제 종료...")
+            kill_process_tree(self.frontend_process)
             self.frontend_process = None
 
-        if self.backend_process and self.backend_process.poll() is None:
-            self.log("백엔드 프로세스 종료...")
-            try:
-                self.backend_process.terminate()
-            except Exception:
-                pass
+        if self.backend_process:
+            self.log(f"백엔드 프로세스(PID: {self.backend_process.pid}) 트리 강제 종료...")
+            kill_process_tree(self.backend_process)
             self.backend_process = None
 
         self.stop_docker_infrastructure()
