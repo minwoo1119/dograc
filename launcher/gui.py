@@ -8,6 +8,12 @@ from launcher.services import ServiceManager
 from launcher.updater import UpdateService
 from launcher.version import __version__
 
+try:
+    from PIL import Image, ImageTk
+    HAS_PIL = True
+except Exception:
+    HAS_PIL = False
+
 
 class DogracLauncherApp:
     def __init__(self, root: tk.Tk) -> None:
@@ -25,7 +31,7 @@ class DogracLauncherApp:
             self.style.theme_use("winnative")
 
         # Set Window Titlebar and Taskbar Icon
-        self.logo_img: tk.PhotoImage | None = None
+        self.logo_img = None
         if ICON_ICO.exists():
             try:
                 self.root.iconbitmap(str(ICON_ICO))
@@ -33,7 +39,11 @@ class DogracLauncherApp:
                 pass
         if LOGO_40_PNG.exists():
             try:
-                self.logo_img = tk.PhotoImage(file=str(LOGO_40_PNG))
+                if HAS_PIL:
+                    pil_img = Image.open(str(LOGO_40_PNG)).convert("RGBA")
+                    self.logo_img = ImageTk.PhotoImage(pil_img)
+                else:
+                    self.logo_img = tk.PhotoImage(file=str(LOGO_40_PNG))
                 self.root.iconphoto(True, self.logo_img)
             except Exception:
                 self.logo_img = None
@@ -90,6 +100,7 @@ class DogracLauncherApp:
 
         if self.logo_img:
             logo_lbl = ttk.Label(header_frame, image=self.logo_img)
+            logo_lbl.image = self.logo_img  # Prevent garbage collection
             logo_lbl.pack(side="left", padx=(0, 10))
 
         title_box = ttk.Frame(header_frame)

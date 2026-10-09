@@ -52,8 +52,28 @@ WEB_DIR = ROOT_DIR / "apps" / "web"
 INFRA_DIR = ROOT_DIR / "infra"
 COMPOSE_FILE = INFRA_DIR / "compose.yaml"
 
-# Asset paths (App logo and icons)
-ASSETS_DIR = ROOT_DIR / "launcher" / "assets"
+def find_assets_dir() -> Path:
+    """Find launcher assets directory in source, PyInstaller bundle, or installed mode."""
+    if hasattr(sys, "_MEIPASS"):
+        p = Path(sys._MEIPASS) / "launcher" / "assets"
+        if p.exists():
+            return p
+    if getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).parent
+        for cand in [
+            exe_dir / "_internal" / "launcher" / "assets",
+            exe_dir / "launcher" / "assets",
+            exe_dir / "assets",
+        ]:
+            if cand.exists():
+                return cand
+    src_assets = Path(__file__).resolve().parent / "assets"
+    if src_assets.exists():
+        return src_assets
+    return ROOT_DIR / "launcher" / "assets"
+
+
+ASSETS_DIR = find_assets_dir()
 ICON_ICO = ASSETS_DIR / "icon.ico"
 ICON_PNG = ASSETS_DIR / "icon.png"
 LOGO_40_PNG = ASSETS_DIR / "logo_40.png"

@@ -128,6 +128,12 @@ def build_standalone() -> None:
             ignore=shutil.ignore_patterns("node_modules", ".next/cache"),
         )
 
+    # Copy launcher assets directly to package_dir
+    dest_assets = package_dir / "launcher" / "assets"
+    if not dest_assets.exists():
+        dest_assets.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(ROOT_DIR / "launcher" / "assets", dest_assets)
+
     # 4. Velopack Packaging
     vpk_cmd = find_vpk_tool()
     if vpk_cmd:
