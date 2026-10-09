@@ -16,6 +16,9 @@ async def get_db_session(request: Request) -> AsyncIterator[AsyncSession]:
         yield session
 
 
+DEFAULT_LOCAL_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
 def get_current_user_id(
     x_user_id: Annotated[str | None, Header(alias="X-User-ID")] = None,
     authorization: Annotated[str | None, Header(alias="Authorization")] = None,
