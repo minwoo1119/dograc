@@ -1,3 +1,5 @@
+import logging
+import socket
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 
@@ -20,11 +22,22 @@ from app.health.checks import ReadinessCheck
 from app.models.embedding import EmbeddingModel, SentenceTransformerEmbeddingModel
 from app.models.generation import GenerationModel, OpenAICompatibleGenerationModel
 from app.storage.health import FileStorageReadinessCheck
+from app.storage.local import LocalFileStorage
 from app.storage.protocol import FileStorage
 from app.storage.s3 import S3FileStorage
 from app.vector_store.health import VectorStoreReadinessCheck
 from app.vector_store.protocol import VectorStore
 from app.vector_store.qdrant import QdrantVectorStore
+
+logger = logging.getLogger("dograc")
+
+
+def is_service_accessible(host: str, port: int, timeout: float = 0.6) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except Exception:
+        return False
 
 
 def create_app(
@@ -39,34 +52,64 @@ def create_app(
 ) -> FastAPI:
     app_settings = settings or get_settings()
     engine = None
+    is_sqlite = False
+
     if session_factory is None:
-        engine = create_engine(app_settings.database_url)
+        db_url = app_settings.database_url
+        # If configured with postgresql but local postgres port (5432) is closed, fallback to local SQLite
+        if "postgresql" in db_url and not is_service_accessible("localhost", 5432):
+            logger.info("PostgreSQL 서비스 미감지: 로컬 SQLite 데이터베이스(dograc_local.db)로 자동 폴백합니다.")
+            db_url = "sqlite+aiosqlite:///dograc_local.db"
+            is_sqlite = True
+        engine = create_engine(db_url)
         session_factory = create_session_factory(engine)
+
     if file_storage is None:
-        file_storage = S3FileStorage(
-            endpoint_url=app_settings.object_storage_endpoint,
-            access_key=app_settings.object_storage_access_key,
-            secret_key=app_settings.object_storage_secret_key,
-            bucket=app_settings.object_storage_bucket,
-            region=app_settings.object_storage_region,
-        )
+        # If MinIO port (9000) is closed, fallback to LocalFileStorage
+        if not is_service_accessible("localhost", 9000):
+            logger.info("MinIO 스토리지 미감지: 로컬 파일시스템 스토리지(data/storage)로 자동 폴백합니다.")
+            file_storage = LocalFileStorage()
+        else:
+            file_storage = S3FileStorage(
+                endpoint_url=app_settings.object_storage_endpoint,
+                access_key=app_settings.object_storage_access_key,
+                secret_key=app_settings.object_storage_secret_key,
+                bucket=app_settings.object_storage_bucket,
+                region=app_settings.object_storage_region,
+            )
+
     if embedding_model is None:
         embedding_model = SentenceTransformerEmbeddingModel(
             app_settings.embedding_model,
             dimensions=app_settings.embedding_dimensions,
         )
+
     if vector_store is None:
-        vector_store = QdrantVectorStore(
-            url=app_settings.qdrant_url,
-            api_key=app_settings.qdrant_api_key,
-            collection_name=app_settings.qdrant_collection,
-        )
+        # If Qdrant port (6333) is closed, fallback to local in-memory Qdrant client
+        if not is_service_accessible("localhost", 6333):
+            logger.info("Qdrant 서비스 미감지: 로컬 임베디드 Qdrant 클라이언트로 자동 폴백합니다.")
+            from qdrant_client import AsyncQdrantClient
+
+            local_client = AsyncQdrantClient(location=":memory:")
+            vector_store = QdrantVectorStore(
+                url="",
+                collection_name=app_settings.qdrant_collection,
+                client=local_client,
+            )
+        else:
+            vector_store = QdrantVectorStore(
+                url=app_settings.qdrant_url,
+                api_key=app_settings.qdrant_api_key,
+                collection_name=app_settings.qdrant_collection,
+            )
+
     if generation_model is None:
         generation_model = OpenAICompatibleGenerationModel(
             model_name=app_settings.generation_model,
             base_url=app_settings.generation_base_url,
             api_key=app_settings.generation_api_key,
         )
+
     app_readiness_checks = (
         tuple(readiness_checks)
         if readiness_checks is not None
@@ -79,6 +122,28 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+        # Initialize SQLite tables automatically if in standalone local mode
+        if is_sqlite and engine is not None:
+            try:
+                from app.db.base import Base
+                import app.db.models.workspace
+                import app.db.models.document
+                import app.db.models.conversation
+                import app.db.models.user
+
+                async with engine.begin() as conn:
+                    await conn.run_sync(Base.metadata.create_all)
+                logger.info("로컬 SQLite 테이블 스키마 초기화 완료.")
+            except Exception as e:
+                logger.warning(f"로컬 SQLite 초기화 중 경고: {e}")
+
+        # Ensure vector store collection
+        if vector_store is not None:
+            try:
+                await vector_store.ensure_collection(dimensions=app_settings.embedding_dimensions)
+            except Exception as e:
+                logger.warning(f"벡터 컬렉션 초기화 중 경고: {e}")
+
         application.state.settings = app_settings
         application.state.readiness_checks = app_readiness_checks
         application.state.session_factory = session_factory
@@ -99,6 +164,14 @@ def create_app(
         redoc_url=None,
         lifespan=lifespan,
     )
+    application.state.settings = app_settings
+    application.state.readiness_checks = app_readiness_checks
+    application.state.session_factory = session_factory
+    application.state.file_storage = file_storage
+    application.state.embedding_model = embedding_model
+    application.state.vector_store = vector_store
+    application.state.generation_model = generation_model
+
     application.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],

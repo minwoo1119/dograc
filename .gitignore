@@ -27,4 +27,6 @@ build/
 dist/
 artifacts/
 *.spec
+*.db
+data/
 
