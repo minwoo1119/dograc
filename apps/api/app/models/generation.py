@@ -1,6 +1,9 @@
+import logging
 from typing import Protocol
 
 import httpx
+
+logger = logging.getLogger("dograc.generation")
 
 
 class GenerationModelError(OSError):
@@ -65,5 +68,6 @@ class OpenAICompatibleGenerationModel:
                 response.raise_for_status()
                 data = response.json()
                 return data["choices"][0]["message"]["content"].strip()
-        except (httpx.HTTPError, KeyError, IndexError, ValueError) as exc:
+        except Exception as exc:
+            logger.error(f"[GenerationModel] LLM 호출 실패 ({url}, model={self._model_name}): {exc}")
             raise GenerationModelError("failed to generate completion from LLM") from exc
