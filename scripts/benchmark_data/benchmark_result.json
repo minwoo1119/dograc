@@ -1,0 +1,288 @@
+{
+  "summary": {
+    "model_name": "qwen2.5:7b",
+    "embedding_model": "BAAI/bge-m3",
+    "total_queries": 20,
+    "valid_queries": 15,
+    "trap_queries": 5,
+    "metrics": {
+      "context_relevance_score": 0.4827,
+      "faithfulness_pct": 73.33,
+      "citation_precision_pct": 66.67,
+      "citation_recall_pct": 40.0,
+      "refusal_accuracy_pct": 100.0,
+      "unsupported_claim_rate_pct": 0.0
+    },
+    "latencies": {
+      "mean_ms": 21775.25,
+      "std_ms": 6770.77
+    }
+  },
+  "results": [
+    {
+      "idx": 1,
+      "query": "업무 단말기 화면 자동 잠금 시간은 몇 분인가요?",
+      "is_trap": false,
+      "answer": "업무 단말기 화면 자동 잠금 시간은 10분 이상으로 정해져 있습니다.[문서 1, 파일: 사내_정보보안_규정.pdf, p.2]",
+      "citations": [],
+      "elapsed_ms": 31745.32370000088,
+      "latency_ms": 30434,
+      "retrieved_count": 5,
+      "avg_score": 0.5054830183057898
+    },
+    {
+      "idx": 2,
+      "query": "사내 비밀 등급은 총 몇 단계로 구분되나요?",
+      "is_trap": false,
+      "answer": "사내 비밀 등급은 4단계로 구분됩니다. [파일명: 사내_정보보안_규정.pdf, p.1]",
+      "citations": [
+        [
+          "파일명: 사내_정보보안_규정.pdf",
+          "1"
+        ]
+      ],
+      "elapsed_ms": 25561.755599992466,
+      "latency_ms": 24776,
+      "retrieved_count": 5,
+      "avg_score": 0.49456872849731565
+    },
+    {
+      "idx": 3,
+      "query": "업무 시스템 비밀번호는 몇 일 주기로 변경해야 하나요?",
+      "is_trap": false,
+      "answer": "문서에서 관련 내용을 확인할 수 없습니다.",
+      "citations": [],
+      "elapsed_ms": 8071.154499994009,
+      "latency_ms": 6600,
+      "retrieved_count": 5,
+      "avg_score": 0.5327656328056032
+    },
+    {
+      "idx": 4,
+      "query": "기밀 유출이나 랜섬웨어 감염 시 몇 분 이내에 어디로 보고해야 하나요?",
+      "is_trap": false,
+      "answer": "기밀 유출이나 랜섬웨어 감염 시 30분 이내에 보안운영팀(내선 1119)에 보고해야 합니다.[문서 1, p.3]",
+      "citations": [
+        [
+          "문서 1",
+          "3"
+        ]
+      ],
+      "elapsed_ms": 28570.173600004637,
+      "latency_ms": 27876,
+      "retrieved_count": 5,
+      "avg_score": 0.5157227593409281
+    },
+    {
+      "idx": 5,
+      "query": "연구개발 구역에서 블루투스나 사설 Wi-Fi 테더링을 사용할 수 있나요?",
+      "is_trap": false,
+      "answer": "연구개발 구역 내에서는 사설 Wi-Fi 핫스팟 및 블루투스 테더링 사용이 전면 차단되어 있습니다. [파일명: 사내_정보보안_규정.pdf, p.3]",
+      "citations": [
+        [
+          "파일명: 사내_정보보안_규정.pdf",
+          "3"
+        ]
+      ],
+      "elapsed_ms": 26547.715699998662,
+      "latency_ms": 25797,
+      "retrieved_count": 5,
+      "avg_score": 0.4550165732193359
+    },
+    {
+      "idx": 6,
+      "query": "본인 결혼 시 부여되는 유급 경조휴가는 며칠인가요?",
+      "is_trap": false,
+      "answer": "본인 결혼 시 부여되는 유급 경조휴가는 5일입니다. [문서 1, p.2]",
+      "citations": [
+        [
+          "문서 1",
+          "2"
+        ]
+      ],
+      "elapsed_ms": 24770.169299998088,
+      "latency_ms": 23518,
+      "retrieved_count": 5,
+      "avg_score": 0.5048617417026404
+    },
+    {
+      "idx": 7,
+      "query": "국내 출장 시 일비와 숙박비 지급 한도는 얼마인가요?",
+      "is_trap": false,
+      "answer": "국내 출장 시 일비는 1일당 30,000원을 지급하며, 숙박비는 1박당 최대 100,000원의 실비 지원이 있습니다. [문서 1, 파일: 근태_및_복무_관리_지침.pdf, p.3]",
+      "citations": [],
+      "elapsed_ms": 35361.66169999342,
+      "latency_ms": 34696,
+      "retrieved_count": 5,
+      "avg_score": 0.5505221212211998
+    },
+    {
+      "idx": 8,
+      "query": "재택근무는 주당 최대 몇 회까지 가능한가요?",
+      "is_trap": false,
+      "answer": "재택근무는 주 2회까지 가능합니다. [문서 1, p.1]",
+      "citations": [
+        [
+          "문서 1",
+          "1"
+        ]
+      ],
+      "elapsed_ms": 22864.10990000877,
+      "latency_ms": 22125,
+      "retrieved_count": 5,
+      "avg_score": 0.5191595668216691
+    },
+    {
+      "idx": 9,
+      "query": "유급 병가는 1년에 최대 며칠까지 사용 가능하며 진단서는 언제 필요한가요?",
+      "is_trap": false,
+      "answer": "문서에서 관련 내용을 확인할 수 없습니다.",
+      "citations": [],
+      "elapsed_ms": 17605.758100005914,
+      "latency_ms": 16664,
+      "retrieved_count": 5,
+      "avg_score": 0.47048297408150797
+    },
+    {
+      "idx": 10,
+      "query": "1년간 80% 이상 출근 시 부여되는 기본 연차휴가 일수는?",
+      "is_trap": false,
+      "answer": "1년간 80% 이상 출근한 근로자에게 부여되는 기본 연차휴가는 15일입니다. [문서 1, 파일: 근태_및_복무_관리_지침.pdf, p.2]",
+      "citations": [],
+      "elapsed_ms": 24697.502499999246,
+      "latency_ms": 24038,
+      "retrieved_count": 5,
+      "avg_score": 0.5207578719249414
+    },
+    {
+      "idx": 11,
+      "query": "국내 특허를 출원했을 때 지급되는 출원 보상금은 얼마인가요?",
+      "is_trap": false,
+      "answer": "국내 특허를 출원했을 때 지급되는 출원 보상금은 500,000원입니다. [연구개발_특허_출원_가이드.pdf, p.1]",
+      "citations": [
+        [
+          "연구개발_특허_출원_가이드.pdf",
+          "1"
+        ]
+      ],
+      "elapsed_ms": 28527.952599994023,
+      "latency_ms": 27864,
+      "retrieved_count": 5,
+      "avg_score": 0.4823134383690079
+    },
+    {
+      "idx": 12,
+      "query": "특허가 최종 등록되면 지급되는 등록 보상금 액수는 얼마인가요?",
+      "is_trap": false,
+      "answer": "등록 보상금은 특허가 특허청 심사를 거쳐 최종 등록된 경우, 1건당 1,500,000원의 등록 보상금을 지급합니다. [연구개발_특허_출원_가이드.pdf, p.1]",
+      "citations": [
+        [
+          "연구개발_특허_출원_가이드.pdf",
+          "1"
+        ]
+      ],
+      "elapsed_ms": 20069.83599999512,
+      "latency_ms": 19192,
+      "retrieved_count": 5,
+      "avg_score": 0.45723673698237777
+    },
+    {
+      "idx": 13,
+      "query": "신규 연구 과제 착수 전 최소 몇 건 이상의 선행 특허를 조사해야 하나요?",
+      "is_trap": false,
+      "answer": "신규 연구 과제 착수 전 최소 20건 이상의 국내외 선행 특허 및 논문 분석 보고서를 작성해야 합니다. [연구개발_특허_출원_가이드.pdf, p.2]",
+      "citations": [
+        [
+          "연구개발_특허_출원_가이드.pdf",
+          "2"
+        ]
+      ],
+      "elapsed_ms": 30710.914199997205,
+      "latency_ms": 29802,
+      "retrieved_count": 5,
+      "avg_score": 0.4607804374018987
+    },
+    {
+      "idx": 14,
+      "query": "임직원이 업무 중 발명한 기술은 누구에게 귀속되나요?",
+      "is_trap": false,
+      "answer": "임직원이 업무 수행 중 완성한 모든 발명과 기술적 고안은 회사의 직무발명으로 귀속된다. [연구개발_특허_출원_가이드.pdf, p.1]",
+      "citations": [
+        [
+          "연구개발_특허_출원_가이드.pdf",
+          "1"
+        ]
+      ],
+      "elapsed_ms": 27149.35669999977,
+      "latency_ms": 26417,
+      "retrieved_count": 5,
+      "avg_score": 0.4376428537964552
+    },
+    {
+      "idx": 15,
+      "query": "오픈소스 중 GPL 라이선스를 도입하려면 어떤 절차를 거쳐야 하나요?",
+      "is_trap": false,
+      "answer": "문서에서 관련 내용을 확인할 수 없습니다.",
+      "citations": [],
+      "elapsed_ms": 18580.261899987818,
+      "latency_ms": 17654,
+      "retrieved_count": 5,
+      "avg_score": 0.4286342604554118
+    },
+    {
+      "idx": 16,
+      "query": "사내 구내식당 점심 식대 지원 금액은 1끼당 얼마인가요?",
+      "is_trap": true,
+      "answer": "문서에서 관련 내용을 확인할 수 없습니다.",
+      "citations": [],
+      "elapsed_ms": 17437.119900001562,
+      "latency_ms": 16178,
+      "retrieved_count": 5,
+      "avg_score": 0.4590974248438198
+    },
+    {
+      "idx": 17,
+      "query": "해외 연수 지원 프로그램의 선발 기준과 어학 성적 요건을 알려주세요.",
+      "is_trap": true,
+      "answer": "문서에서 관련 내용을 확인할 수 없습니다.",
+      "citations": [],
+      "elapsed_ms": 16530.43980000075,
+      "latency_ms": 15535,
+      "retrieved_count": 5,
+      "avg_score": 0.4360991007773924
+    },
+    {
+      "idx": 18,
+      "query": "사내 체력단련실(피트니스센터) 이용 시간과 락커 신청 방법은 무엇인가요?",
+      "is_trap": true,
+      "answer": "문서에서 관련 내용을 확인할 수 없습니다.",
+      "citations": [],
+      "elapsed_ms": 17222.191600012593,
+      "latency_ms": 16445,
+      "retrieved_count": 5,
+      "avg_score": 0.4642370690817982
+    },
+    {
+      "idx": 19,
+      "query": "임직원 자녀 대학 학자금 지원 한도는 1학기당 최대 얼마인가요?",
+      "is_trap": true,
+      "answer": "문서에서 관련 내용을 확인할 수 없습니다.",
+      "citations": [],
+      "elapsed_ms": 17842.073099993286,
+      "latency_ms": 17094,
+      "retrieved_count": 5,
+      "avg_score": 0.4766290409636606
+    },
+    {
+      "idx": 20,
+      "query": "사내 차량 5부제 요일별 적용 대상 차량 번호 끝자리를 안내해주세요.",
+      "is_trap": true,
+      "answer": "문서에서 관련 내용을 확인할 수 없습니다.",
+      "citations": [],
+      "elapsed_ms": 14117.586499996833,
+      "latency_ms": 12800,
+      "retrieved_count": 5,
+      "avg_score": 0.4814170267997954
+    }
+  ]
+}
