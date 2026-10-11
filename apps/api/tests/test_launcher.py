@@ -42,7 +42,7 @@ def test_check_backend_status():
         assert st.is_ready is True
         assert "정상 준비 완료" in st.message
 
-    with patch.object(manager, "is_url_accessible", return_value=False):
+    with patch.object(manager, "is_url_accessible", return_value=False), patch("launcher.services.is_port_open", return_value=False):
         st = manager.check_backend()
         assert st.is_ready is False
         assert "미가동" in st.message
@@ -55,7 +55,7 @@ def test_check_ollama_status():
         assert st.is_ready is True
         assert "로컬 Ollama 서비스 연결됨" in st.message
 
-    with patch.object(manager, "is_url_accessible", return_value=False):
+    with patch.object(manager, "is_url_accessible", return_value=False), patch("launcher.services.is_port_open", return_value=False):
         st = manager.check_ollama()
         assert st.is_ready is False
         assert "미응답" in st.message
