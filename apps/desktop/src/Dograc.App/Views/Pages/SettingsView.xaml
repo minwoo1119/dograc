@@ -1,0 +1,48 @@
+<UserControl x:Class="Dograc.App.Views.Pages.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:theme="clr-namespace:Dograc.Core.Theme;assembly=Dograc.Core">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="{Binding PageTitle}" Style="{StaticResource Text.TitleM}" />
+            <TextBlock Text="{Binding PageDescription}" Style="{StaticResource Text.Caption}" Margin="0,4,0,0" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" MaxWidth="640" HorizontalAlignment="Left">
+            <Border Background="{DynamicResource Brush.Surface}"
+                    BorderBrush="{DynamicResource Brush.Border}"
+                    BorderThickness="{StaticResource Border.Hairline}"
+                    CornerRadius="{StaticResource Radius.Medium}"
+                    Padding="16">
+                <StackPanel>
+                    <TextBlock Text="화면 테마" Style="{StaticResource Text.TitleS}" />
+                    <TextBlock Text="Reading-First KDS 토큰을 기반으로 Light / Dark / System 테마를 전환합니다."
+                               Style="{StaticResource Text.Caption}"
+                               Margin="0,4,0,12" />
+
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="System"
+                                Style="{StaticResource Button.Secondary}"
+                                Command="{Binding SetThemeCommand}"
+                                CommandParameter="{x:Static theme:AppThemeMode.System}"
+                                Margin="0,0,8,0" />
+                        <Button Content="Light"
+                                Style="{StaticResource Button.Secondary}"
+                                Command="{Binding SetThemeCommand}"
+                                CommandParameter="{x:Static theme:AppThemeMode.Light}"
+                                Margin="0,0,8,0" />
+                        <Button Content="Dark"
+                                Style="{StaticResource Button.Secondary}"
+                                Command="{Binding SetThemeCommand}"
+                                CommandParameter="{x:Static theme:AppThemeMode.Dark}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </Grid>
+</UserControl>

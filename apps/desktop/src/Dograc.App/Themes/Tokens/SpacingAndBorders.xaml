@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!-- 1 DIP Hairline Borders & 4-8 DIP Corner Radius -->
+    <Thickness x:Key="Border.Hairline">1</Thickness>
+    <Thickness x:Key="Border.None">0</Thickness>
+
+    <CornerRadius x:Key="Radius.Small">4</CornerRadius>
+    <CornerRadius x:Key="Radius.Medium">6</CornerRadius>
+    <CornerRadius x:Key="Radius.Large">8</CornerRadius>
+
+    <!-- Spacing Scale -->
+    <Thickness x:Key="Padding.Page">20</Thickness>
+    <Thickness x:Key="Padding.Panel">12</Thickness>
+    <Thickness x:Key="Padding.Compact">8</Thickness>
+    <Thickness x:Key="Padding.Button">12,6</Thickness>
+    <Thickness x:Key="Padding.Input">10,7</Thickness>
+
+    <sys:Double x:Key="Shell.TitleBarHeight">40</sys:Double>
+    <sys:Double x:Key="Shell.StatusBarHeight">28</sys:Double>
+    <sys:Double x:Key="Shell.NavRailWidth">54</sys:Double>
+</ResourceDictionary>

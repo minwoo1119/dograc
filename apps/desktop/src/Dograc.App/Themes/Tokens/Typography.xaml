@@ -1,0 +1,16 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!-- Reading-First Typography Tokens -->
+    <FontFamily x:Key="Font.Primary">Noto Sans KR, Malgun Gothic, Segoe UI, sans-serif</FontFamily>
+    <FontFamily x:Key="Font.Mono">Cascadia Mono, Consolas, Courier New</FontFamily>
+    <FontFamily x:Key="Font.Icon">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+    <sys:Double x:Key="FontSize.TitleL">20</sys:Double>
+    <sys:Double x:Key="FontSize.TitleM">16</sys:Double>
+    <sys:Double x:Key="FontSize.TitleS">13.5</sys:Double>
+    <sys:Double x:Key="FontSize.BodyL">14</sys:Double>
+    <sys:Double x:Key="FontSize.BodyM">13</sys:Double>
+    <sys:Double x:Key="FontSize.Caption">11.5</sys:Double>
+    <sys:Double x:Key="FontSize.Micro">10.5</sys:Double>
+</ResourceDictionary>

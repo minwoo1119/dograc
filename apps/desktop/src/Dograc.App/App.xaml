@@ -1,0 +1,18 @@
+<Application x:Class="Dograc.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:Dograc.App.Converters">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/Tokens/Colors.Light.xaml" />
+                <ResourceDictionary Source="Themes/Tokens/Typography.xaml" />
+                <ResourceDictionary Source="Themes/Tokens/SpacingAndBorders.xaml" />
+                <ResourceDictionary Source="Themes/Styles/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+            <converters:EnumEqualsConverter x:Key="EnumEquals" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

@@ -1,0 +1,39 @@
+name: Bug Report
+description: 버그 또는 의도치 않은 동작을 제보합니다.
+title: "[Fix] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 문제 요약
+      description: 어떤 문제가 발생했는지 간략히 설명해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 재현 절차
+      description: 문제를 재현하는 단계를 순서대로 작성해 주세요.
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: 기대 동작 vs 실제 동작
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 실행 환경
+      placeholder: |
+        - OS: Windows 11
+        - .NET SDK: 10.0.401
+        - Backend / Ollama 상태:

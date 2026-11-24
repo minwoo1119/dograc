@@ -1,0 +1,49 @@
+name: Feature / Phase Task
+description: 새로운 기능 구현 또는 WPF 마이그레이션 Phase 작업 이슈를 생성합니다.
+title: "[Feat] "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: phase
+    attributes:
+      label: 관련 Phase
+      options:
+        - Phase 2 (WPF Shell & Design System)
+        - Phase 3 (Service Management & System Logs)
+        - Phase 4 (Workspace, Document, Conversation API)
+        - Phase 5 (Chat, Markdown, Citation & Evidence)
+        - Phase 6 (PDF Preview, Models, Settings & Update)
+        - Phase 7 (Integration Tests & Packaging)
+        - 기타 기능
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: 목표 (Objective)
+      description: 이 작업으로 달성하려는 핵심 목표를 작성해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 구현 범위 (Scope)
+      description: 변경 또는 추가될 파일, 컴포넌트, API 연동 범위를 나열해 주세요.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 완료 조건 (Acceptance Criteria)
+      description: PR 머지 전 반드시 검증해야 할 빌드, 테스트, 동작 조건을 작성해 주세요.
+      placeholder: |
+        - [ ] `dotnet test apps/desktop/Dograc.sln` 통과
+        - [ ] 기존 API 계약 유지
+    validations:
+      required: true

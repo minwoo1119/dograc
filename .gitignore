@@ -30,3 +30,9 @@ artifacts/
 *.db
 data/
 
+# .NET / WPF
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+

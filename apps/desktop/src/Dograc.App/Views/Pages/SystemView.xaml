@@ -1,0 +1,27 @@
+<UserControl x:Class="Dograc.App.Views.Pages.SystemView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="{Binding PageTitle}" Style="{StaticResource Text.TitleM}" />
+            <TextBlock Text="{Binding PageDescription}" Style="{StaticResource Text.Caption}" Margin="0,4,0,0" />
+        </StackPanel>
+
+        <Border Grid.Row="1"
+                Background="{DynamicResource Brush.Surface}"
+                BorderBrush="{DynamicResource Brush.Border}"
+                BorderThickness="{StaticResource Border.Hairline}"
+                CornerRadius="{StaticResource Radius.Medium}"
+                Padding="24">
+            <TextBlock Text="System 제어 및 로그 화면 — Phase 3에서 Docker, Ollama, FastAPI 자동 기동 및 실시간 로그가 연결됩니다."
+                       Style="{StaticResource Text.BodyM}"
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Center" />
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,60 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Primary Indigo (KDS Core) -->
+    <Color x:Key="Color.Primary">#5055B1</Color>
+    <Color x:Key="Color.PrimaryHover">#3F4391</Color>
+    <Color x:Key="Color.PrimarySubtle">#F0F2FA</Color>
+    <Color x:Key="Color.PrimaryBorder">#C8CEEC</Color>
+
+    <!-- Surfaces & Canvas -->
+    <Color x:Key="Color.Canvas">#FAFBFC</Color>
+    <Color x:Key="Color.Surface">#FFFFFF</Color>
+    <Color x:Key="Color.SurfaceSubtle">#F4F5F7</Color>
+    <Color x:Key="Color.SurfaceHover">#EAEBEE</Color>
+
+    <!-- Borders (1 DIP Hairline) -->
+    <Color x:Key="Color.Border">#E0E2E6</Color>
+    <Color x:Key="Color.BorderSubtle">#EAEBEE</Color>
+    <Color x:Key="Color.BorderStrong">#C9CCD2</Color>
+
+    <!-- Text Hierarchy -->
+    <Color x:Key="Color.TextPrimary">#1B1D22</Color>
+    <Color x:Key="Color.TextSecondary">#4D5159</Color>
+    <Color x:Key="Color.TextMuted">#80858E</Color>
+    <Color x:Key="Color.TextOnPrimary">#FFFFFF</Color>
+
+    <!-- Semantic Status -->
+    <Color x:Key="Color.Success">#4DAC27</Color>
+    <Color x:Key="Color.SuccessSubtle">#E5F5E2</Color>
+    <Color x:Key="Color.Warning">#B45309</Color>
+    <Color x:Key="Color.WarningSubtle">#FEF3C7</Color>
+    <Color x:Key="Color.Danger">#EC1F2D</Color>
+    <Color x:Key="Color.DangerSubtle">#FEE2E2</Color>
+
+    <!-- Brushes -->
+    <SolidColorBrush x:Key="Brush.Primary" Color="{StaticResource Color.Primary}" />
+    <SolidColorBrush x:Key="Brush.PrimaryHover" Color="{StaticResource Color.PrimaryHover}" />
+    <SolidColorBrush x:Key="Brush.PrimarySubtle" Color="{StaticResource Color.PrimarySubtle}" />
+    <SolidColorBrush x:Key="Brush.PrimaryBorder" Color="{StaticResource Color.PrimaryBorder}" />
+
+    <SolidColorBrush x:Key="Brush.Canvas" Color="{StaticResource Color.Canvas}" />
+    <SolidColorBrush x:Key="Brush.Surface" Color="{StaticResource Color.Surface}" />
+    <SolidColorBrush x:Key="Brush.SurfaceSubtle" Color="{StaticResource Color.SurfaceSubtle}" />
+    <SolidColorBrush x:Key="Brush.SurfaceHover" Color="{StaticResource Color.SurfaceHover}" />
+
+    <SolidColorBrush x:Key="Brush.Border" Color="{StaticResource Color.Border}" />
+    <SolidColorBrush x:Key="Brush.BorderSubtle" Color="{StaticResource Color.BorderSubtle}" />
+    <SolidColorBrush x:Key="Brush.BorderStrong" Color="{StaticResource Color.BorderStrong}" />
+
+    <SolidColorBrush x:Key="Brush.TextPrimary" Color="{StaticResource Color.TextPrimary}" />
+    <SolidColorBrush x:Key="Brush.TextSecondary" Color="{StaticResource Color.TextSecondary}" />
+    <SolidColorBrush x:Key="Brush.TextMuted" Color="{StaticResource Color.TextMuted}" />
+    <SolidColorBrush x:Key="Brush.TextOnPrimary" Color="{StaticResource Color.TextOnPrimary}" />
+
+    <SolidColorBrush x:Key="Brush.Success" Color="{StaticResource Color.Success}" />
+    <SolidColorBrush x:Key="Brush.SuccessSubtle" Color="{StaticResource Color.SuccessSubtle}" />
+    <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}" />
+    <SolidColorBrush x:Key="Brush.WarningSubtle" Color="{StaticResource Color.WarningSubtle}" />
+    <SolidColorBrush x:Key="Brush.Danger" Color="{StaticResource Color.Danger}" />
+    <SolidColorBrush x:Key="Brush.DangerSubtle" Color="{StaticResource Color.DangerSubtle}" />
+</ResourceDictionary>
