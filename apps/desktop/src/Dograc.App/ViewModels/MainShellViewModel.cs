@@ -81,6 +81,7 @@ public sealed partial class MainShellViewModel : ObservableObject
         IServiceManager serviceManager,
         IStartupOrchestrator startupOrchestrator,
         IWorkspaceContext workspaceContext,
+        EvidenceViewModel evidenceViewModel,
         ChatViewModel chatViewModel,
         DocumentsViewModel documentsViewModel,
         WorkspacesViewModel workspacesViewModel,
@@ -94,6 +95,21 @@ public sealed partial class MainShellViewModel : ObservableObject
         _startupOrchestrator = startupOrchestrator;
         _workspaceContext = workspaceContext;
         DocumentsPanel = documentsViewModel;
+        EvidencePanel = evidenceViewModel;
+
+        chatViewModel.EvidenceRequested += (_, req) => RunOnUiThread(() =>
+        {
+            SelectedContextTab = ContextPanelTab.Evidence;
+            IsContextPanelVisible = true;
+            _ = EvidencePanel.LoadTraceAsync(req);
+        });
+
+        evidenceViewModel.PreviewRequested += (_, citation) => RunOnUiThread(() =>
+        {
+            SelectedContextTab = ContextPanelTab.Preview;
+            IsContextPanelVisible = true;
+            StatusMessage = $"미리보기 요청됨: {citation.DisplayLabel} (Phase 6에서 PDF 뷰어 연결 예정)";
+        });
 
         _pages = new Dictionary<NavigationPage, PageViewModelBase>
         {
@@ -151,6 +167,8 @@ public sealed partial class MainShellViewModel : ObservableObject
     }
 
     public DocumentsViewModel DocumentsPanel { get; }
+
+    public EvidenceViewModel EvidencePanel { get; }
 
     public IReadOnlyList<NavigationItem> NavigationItems { get; }
 

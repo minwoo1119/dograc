@@ -555,19 +555,195 @@
                             </ScrollViewer>
                         </Grid>
 
-                        <!-- Context Tab 2: Evidence (Phase 5) -->
-                        <Border Grid.Row="1"
-                                Visibility="{Binding IsEvidenceContextTab, Converter={StaticResource BoolToVisibility}}"
-                                Padding="16">
-                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                <TextBlock Text="Evidence Panel" Style="{StaticResource Text.TitleS}" HorizontalAlignment="Center" />
-                                <TextBlock Text="Phase 5에서 답변의 검색 청크, 유사도, 사용 모델 및 응답 시간이 표시됩니다."
+                        <!-- Context Tab 2: Evidence (Connected to EvidenceViewModel) -->
+                        <Grid Grid.Row="1"
+                              DataContext="{Binding EvidencePanel}"
+                              Visibility="{Binding DataContext.IsEvidenceContextTab, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"
+                              Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Loading / Error -->
+                            <StackPanel Grid.Row="0">
+                                <TextBlock Text="답변 근거 데이터를 불러오는 중..."
+                                           Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"
                                            Style="{StaticResource Text.Caption}"
-                                           TextWrapping="Wrap"
-                                           TextAlignment="Center"
-                                           Margin="0,6,0,0" />
+                                           Margin="0,0,0,8" />
+                                <Border Visibility="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyToVisibility}}"
+                                        Background="{DynamicResource Brush.DangerSubtle}"
+                                        BorderBrush="{DynamicResource Brush.Danger}"
+                                        BorderThickness="{StaticResource Border.Hairline}"
+                                        CornerRadius="{StaticResource Radius.Small}"
+                                        Padding="8,6"
+                                        Margin="0,0,0,8">
+                                    <TextBlock Text="{Binding ErrorMessage}"
+                                               FontSize="11.5"
+                                               Foreground="{DynamicResource Brush.Danger}"
+                                               TextWrapping="Wrap" />
+                                </Border>
                             </StackPanel>
-                        </Border>
+
+                            <!-- Trace Summary Card -->
+                            <Border Grid.Row="1"
+                                    Visibility="{Binding HasTrace, Converter={StaticResource BoolToVisibility}}"
+                                    Background="{DynamicResource Brush.SurfaceSubtle}"
+                                    BorderBrush="{DynamicResource Brush.Border}"
+                                    BorderThickness="{StaticResource Border.Hairline}"
+                                    CornerRadius="{StaticResource Radius.Small}"
+                                    Padding="10,8"
+                                    Margin="0,0,0,10">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Row="0" Grid.Column="0">
+                                        <TextBlock Text="생성 모델" Style="{StaticResource Text.Caption}" FontSize="10.5" />
+                                        <TextBlock Text="{Binding ModelName}"
+                                                   FontFamily="{StaticResource Font.Mono}"
+                                                   FontSize="11.5"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Brush.TextPrimary}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="0" Grid.Column="1" HorizontalAlignment="Right">
+                                        <TextBlock Text="응답 시간" Style="{StaticResource Text.Caption}" FontSize="10.5" HorizontalAlignment="Right" />
+                                        <TextBlock Text="{Binding LatencyLabel}"
+                                                   FontFamily="{StaticResource Font.Mono}"
+                                                   FontSize="11.5"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Brush.Primary}"
+                                                   HorizontalAlignment="Right" />
+                                    </StackPanel>
+
+                                    <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,8,0,0">
+                                        <TextBlock Text="{Binding ChunkCountLabel}"
+                                                   FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Brush.Primary}"
+                                                   VerticalAlignment="Center" />
+                                        <Button Content="프롬프트 전문 토글"
+                                                Style="{StaticResource Button.Secondary}"
+                                                Command="{Binding TogglePromptCommand}"
+                                                Visibility="{Binding PromptText, Converter={StaticResource StringNotEmptyToVisibility}}"
+                                                Padding="8,2"
+                                                FontSize="10.5"
+                                                HorizontalAlignment="Right" />
+                                    </Grid>
+                                </Grid>
+                            </Border>
+
+                            <!-- Empty State or Retrieved Chunks + Optional Prompt -->
+                            <Grid Grid.Row="2">
+                                <StackPanel Visibility="{Binding HasTrace, Converter={StaticResource InverseBoolToVisibility}}"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Center"
+                                            Margin="12">
+                                    <TextBlock Text="선택된 답변 근거 없음" Style="{StaticResource Text.TitleS}" HorizontalAlignment="Center" />
+                                    <TextBlock Text="AI 답변 내 [파일명, p.숫자] 인용 배지 또는 '답변 근거 분석 보기'를 클릭하면 검색 청크와 유사도가 표시됩니다."
+                                               Style="{StaticResource Text.Caption}"
+                                               TextWrapping="Wrap"
+                                               TextAlignment="Center"
+                                               Margin="0,6,0,0" />
+                                </StackPanel>
+
+                                <ScrollViewer Visibility="{Binding HasTrace, Converter={StaticResource BoolToVisibility}}"
+                                              VerticalScrollBarVisibility="Auto">
+                                    <StackPanel>
+                                        <Border Visibility="{Binding ShowPrompt, Converter={StaticResource BoolToVisibility}}"
+                                                Background="{DynamicResource Brush.SurfaceSubtle}"
+                                                BorderBrush="{DynamicResource Brush.Border}"
+                                                BorderThickness="{StaticResource Border.Hairline}"
+                                                CornerRadius="{StaticResource Radius.Small}"
+                                                Padding="8"
+                                                Margin="0,0,0,10">
+                                            <TextBlock Text="{Binding PromptText}"
+                                                       FontFamily="{StaticResource Font.Mono}"
+                                                       FontSize="11"
+                                                       Foreground="{DynamicResource Brush.TextSecondary}"
+                                                       TextWrapping="Wrap" />
+                                        </Border>
+
+                                        <ItemsControl ItemsSource="{Binding Chunks}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border BorderThickness="{StaticResource Border.Hairline}"
+                                                            CornerRadius="{StaticResource Radius.Small}"
+                                                            Padding="10,8"
+                                                            Margin="0,0,0,8">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsHighlighted}" Value="True">
+                                                                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Primary}" />
+                                                                        <Setter Property="Background" Value="{DynamicResource Brush.PrimarySubtle}" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <StackPanel>
+                                                            <Grid Margin="0,0,0,6">
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <TextBlock Text="{Binding SourceFileName}"
+                                                                               FontSize="11.5"
+                                                                               FontWeight="SemiBold"
+                                                                               Foreground="{DynamicResource Brush.TextPrimary}"
+                                                                               TextTrimming="CharacterEllipsis"
+                                                                               MaxWidth="145" />
+                                                                    <TextBlock Text="{Binding PageLabel}"
+                                                                               FontFamily="{StaticResource Font.Mono}"
+                                                                               FontSize="11"
+                                                                               Foreground="{DynamicResource Brush.Primary}"
+                                                                               Margin="6,0,0,0" />
+                                                                </StackPanel>
+                                                                <TextBlock Text="{Binding ScoreLabel}"
+                                                                           FontFamily="{StaticResource Font.Mono}"
+                                                                           FontSize="10.5"
+                                                                           Foreground="{DynamicResource Brush.TextSecondary}"
+                                                                           HorizontalAlignment="Right" />
+                                                            </Grid>
+
+                                                            <Border Background="{DynamicResource Brush.SurfaceSubtle}"
+                                                                    BorderBrush="{DynamicResource Brush.BorderSubtle}"
+                                                                    BorderThickness="{StaticResource Border.Hairline}"
+                                                                    CornerRadius="{StaticResource Radius.Small}"
+                                                                    Padding="8,6">
+                                                                <TextBlock Text="{Binding Text}"
+                                                                           FontSize="11.5"
+                                                                           Foreground="{DynamicResource Brush.TextPrimary}"
+                                                                           TextWrapping="Wrap" />
+                                                            </Border>
+
+                                                            <Button Content="원문 페이지 미리보기 →"
+                                                                    Command="{Binding DataContext.OpenInPreviewCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Background="Transparent"
+                                                                    BorderThickness="0"
+                                                                    Cursor="Hand"
+                                                                    FontSize="10.5"
+                                                                    Foreground="{DynamicResource Brush.Primary}"
+                                                                    HorizontalAlignment="Right"
+                                                                    Margin="0,6,0,0" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+                        </Grid>
 
                         <!-- Context Tab 3: Preview (Phase 6) -->
                         <Border Grid.Row="1"
@@ -597,7 +773,7 @@
                                Style="{StaticResource Text.Caption}"
                                VerticalAlignment="Center"
                                HorizontalAlignment="Left" />
-                    <TextBlock Text="dograc Desktop · Phase 4"
+                    <TextBlock Text="dograc Desktop · Phase 5"
                                Style="{StaticResource Text.Caption}"
                                VerticalAlignment="Center"
                                HorizontalAlignment="Right" />

@@ -100,6 +100,80 @@ public sealed class DogracApiClientTests
         Assert.Equal("워크스페이스를 찾을 수 없습니다.", ex.Message);
     }
 
+    [Fact]
+    public async Task SendMessageAsync_SendsModelOptions_AndDeserializesTraceId()
+    {
+        string? capturedBody = null;
+        var convId = Guid.NewGuid();
+        var traceId = Guid.NewGuid();
+        var responseJson = $$"""
+        {
+          "id": "{{Guid.NewGuid()}}",
+          "conversation_id": "{{convId}}",
+          "role": "assistant",
+          "content": "근거 답변입니다 [policy.pdf, p.2].",
+          "created_at": "2026-11-25T02:00:00Z",
+          "trace_id": "{{traceId}}"
+        }
+        """;
+
+        var client = CreateClient(async (req, ct) =>
+        {
+            capturedBody = await req.Content!.ReadAsStringAsync(ct);
+            return JsonResponse(HttpStatusCode.Created, responseJson);
+        });
+
+        var reply = await client.SendMessageAsync(
+            convId,
+            "보안 규정은?",
+            new SendMessageOptions("qwen2.5:7b", "http://localhost:11434/v1"));
+
+        Assert.NotNull(capturedBody);
+        Assert.Contains("qwen2.5:7b", capturedBody!);
+        Assert.Contains("http://localhost:11434/v1", capturedBody!);
+        Assert.Equal(traceId, reply.TraceId);
+        Assert.Equal("assistant", reply.Role);
+    }
+
+    [Fact]
+    public async Task GetTraceAsync_DeserializesModelLatencyAndChunks()
+    {
+        var traceId = Guid.NewGuid();
+        var responseJson = $$"""
+        {
+          "id": "{{traceId}}",
+          "message_id": "{{Guid.NewGuid()}}",
+          "workspace_id": "{{Guid.NewGuid()}}",
+          "model_name": "qwen2.5:7b",
+          "latency_ms": 842,
+          "prompt": "SYSTEM PROMPT",
+          "created_at": "2026-11-25T02:00:00Z",
+          "retrieved_chunks": [
+            {
+              "chunk_id": "chunk-1",
+              "document_id": "doc-1",
+              "source_file_name": "policy.pdf",
+              "page_number": 2,
+              "score": 0.912,
+              "text": "외부 반출 금지 조항"
+            }
+          ]
+        }
+        """;
+
+        var client = CreateClient((_, _) =>
+            Task.FromResult(JsonResponse(HttpStatusCode.OK, responseJson)));
+
+        var trace = await client.GetTraceAsync(traceId);
+
+        Assert.Equal("qwen2.5:7b", trace.ModelName);
+        Assert.Equal(842, trace.LatencyMs);
+        var chunk = Assert.Single(trace.RetrievedChunks);
+        Assert.Equal("policy.pdf", chunk.SourceFileName);
+        Assert.Equal(2, chunk.PageNumber);
+        Assert.Equal(0.912, chunk.Score, 3);
+    }
+
     private static DogracApiClient CreateClient(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler)
     {
         var httpClient = new HttpClient(new StubHttpMessageHandler(handler))

@@ -14,12 +14,6 @@ public abstract partial class PageViewModelBase : ObservableObject
     public abstract string PageDescription { get; }
 }
 
-public sealed class ChatViewModel : PageViewModelBase
-{
-    public override string PageTitle => "AI Chat Workspace";
-    public override string PageDescription => "선택한 워크스페이스의 문서를 근거로 질의응답을 수행합니다.";
-}
-
 public sealed class ModelsViewModel : PageViewModelBase
 {
     public override string PageTitle => "Models";
