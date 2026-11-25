@@ -6,6 +6,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Dograc.App</RootNamespace>
+    <AssemblyName>dograc</AssemblyName>
+    <Version>0.1.0</Version>
+    <Product>dograc Desktop</Product>
+    <Description>Local AI Research Workspace (Unified WPF Client)</Description>
+    <ApplicationIcon>..\..\..\..\launcher\assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

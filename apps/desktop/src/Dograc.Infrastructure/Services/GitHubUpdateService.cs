@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using Dograc.Core.Models;
 using Dograc.Core.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Dograc.Infrastructure.Services;
 
@@ -16,6 +17,7 @@ public sealed class GitHubUpdateService : IUpdateService
 
     private readonly HttpClient _httpClient;
 
+    [ActivatorUtilitiesConstructor]
     public GitHubUpdateService(HttpClient httpClient)
         : this(httpClient, DefaultCurrentVersion)
     {
