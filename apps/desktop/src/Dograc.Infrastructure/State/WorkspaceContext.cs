@@ -15,6 +15,7 @@ public sealed class WorkspaceContext : IWorkspaceContext
     };
 
     private readonly IDogracApiClient _apiClient;
+    private readonly ISettingsStore? _settingsStore;
     private readonly object _lock = new();
 
     private List<WorkspaceDto> _workspaces = [];
@@ -23,9 +24,10 @@ public sealed class WorkspaceContext : IWorkspaceContext
     private List<ConversationDto> _conversations = [];
     private ConversationDto? _selectedConversation;
 
-    public WorkspaceContext(IDogracApiClient apiClient)
+    public WorkspaceContext(IDogracApiClient apiClient, ISettingsStore? settingsStore = null)
     {
         _apiClient = apiClient;
+        _settingsStore = settingsStore;
     }
 
     public IReadOnlyList<WorkspaceDto> Workspaces
@@ -200,6 +202,7 @@ public sealed class WorkspaceContext : IWorkspaceContext
         }
 
         var uploaded = await _apiClient.UploadDocumentAsync(workspaceId, filePath, cancellationToken);
+        _settingsStore?.RegisterDocumentLocalPath(uploaded.SourceFileName, Path.GetFullPath(filePath));
         await RefreshDocumentsAsync(cancellationToken);
 
         try

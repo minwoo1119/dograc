@@ -19,6 +19,7 @@ public sealed partial class MainShellViewModel : ObservableObject
     private readonly IServiceManager _serviceManager;
     private readonly IStartupOrchestrator _startupOrchestrator;
     private readonly IWorkspaceContext _workspaceContext;
+    private readonly ISettingsStore _settingsStore;
     private readonly IReadOnlyDictionary<NavigationPage, PageViewModelBase> _pages;
 
     private bool _isSyncingContext;
@@ -81,7 +82,9 @@ public sealed partial class MainShellViewModel : ObservableObject
         IServiceManager serviceManager,
         IStartupOrchestrator startupOrchestrator,
         IWorkspaceContext workspaceContext,
+        ISettingsStore settingsStore,
         EvidenceViewModel evidenceViewModel,
+        PreviewViewModel previewViewModel,
         ChatViewModel chatViewModel,
         DocumentsViewModel documentsViewModel,
         WorkspacesViewModel workspacesViewModel,
@@ -94,21 +97,31 @@ public sealed partial class MainShellViewModel : ObservableObject
         _serviceManager = serviceManager;
         _startupOrchestrator = startupOrchestrator;
         _workspaceContext = workspaceContext;
+        _settingsStore = settingsStore;
         DocumentsPanel = documentsViewModel;
         EvidencePanel = evidenceViewModel;
+        PreviewPanel = previewViewModel;
 
         chatViewModel.EvidenceRequested += (_, req) => RunOnUiThread(() =>
         {
             SelectedContextTab = ContextPanelTab.Evidence;
             IsContextPanelVisible = true;
             _ = EvidencePanel.LoadTraceAsync(req);
+
+            if (!string.IsNullOrWhiteSpace(req.HighlightFileName))
+            {
+                PreviewPanel.LoadDocument(new PreviewDocumentRequest(
+                    req.HighlightFileName,
+                    req.HighlightPageNumber ?? 1));
+            }
         });
 
-        evidenceViewModel.PreviewRequested += (_, citation) => RunOnUiThread(() =>
+        evidenceViewModel.PreviewRequested += (_, previewReq) => RunOnUiThread(() =>
         {
             SelectedContextTab = ContextPanelTab.Preview;
             IsContextPanelVisible = true;
-            StatusMessage = $"미리보기 요청됨: {citation.DisplayLabel} (Phase 6에서 PDF 뷰어 연결 예정)";
+            PreviewPanel.LoadDocument(previewReq);
+            StatusMessage = $"문서 미리보기: {previewReq.FileName} (p.{previewReq.PageNumber})";
         });
 
         _pages = new Dictionary<NavigationPage, PageViewModelBase>
@@ -169,6 +182,8 @@ public sealed partial class MainShellViewModel : ObservableObject
     public DocumentsViewModel DocumentsPanel { get; }
 
     public EvidenceViewModel EvidencePanel { get; }
+
+    public PreviewViewModel PreviewPanel { get; }
 
     public IReadOnlyList<NavigationItem> NavigationItems { get; }
 
@@ -339,6 +354,7 @@ public sealed partial class MainShellViewModel : ObservableObject
             _ => AppThemeMode.System
         };
         _themeService.ApplyTheme(next);
+        _settingsStore.Save(_settingsStore.Current with { ThemeMode = next });
         StatusMessage = $"테마 변경됨: {next}";
     }
 
