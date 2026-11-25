@@ -38,12 +38,6 @@ public sealed class ModelsViewModel : PageViewModelBase
     public override string PageDescription => "로컬 Ollama 모델 및 생성 엔드포인트를 구성하고 연결을 테스트합니다.";
 }
 
-public sealed class SystemViewModel : PageViewModelBase
-{
-    public override string PageTitle => "System";
-    public override string PageDescription => "Docker, Ollama, FastAPI 백엔드 상태와 실시간 시스템 로그를 확인합니다.";
-}
-
 public sealed partial class SettingsViewModel : PageViewModelBase
 {
     private readonly IThemeService _themeService;

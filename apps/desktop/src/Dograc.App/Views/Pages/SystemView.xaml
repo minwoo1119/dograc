@@ -4,24 +4,183 @@
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="0,0,0,16">
-            <TextBlock Text="{Binding PageTitle}" Style="{StaticResource Text.TitleM}" />
-            <TextBlock Text="{Binding PageDescription}" Style="{StaticResource Text.Caption}" Margin="0,4,0,0" />
-        </StackPanel>
+        <!-- Page Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="{Binding PageTitle}" Style="{StaticResource Text.TitleM}" />
+                <TextBlock Text="{Binding PageDescription}" Style="{StaticResource Text.Caption}" Margin="0,4,0,0" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Content="전체 시작"
+                        Style="{StaticResource Button.Primary}"
+                        Command="{Binding StartAllCommand}"
+                        IsEnabled="{Binding IsNotBusy}"
+                        Margin="0,0,6,0" />
+                <Button Content="상태 새로고침"
+                        Style="{StaticResource Button.Secondary}"
+                        Command="{Binding RefreshStatusesCommand}"
+                        IsEnabled="{Binding IsNotBusy}"
+                        Margin="0,0,6,0" />
+                <Button Content="Setup Wizard"
+                        Style="{StaticResource Button.Secondary}"
+                        Command="{Binding OpenSetupWizardCommand}"
+                        Margin="0,0,6,0" />
+                <Button Content="앱 관리 서비스 중지"
+                        Style="{StaticResource Button.Secondary}"
+                        Command="{Binding StopManagedCommand}"
+                        IsEnabled="{Binding IsNotBusy}" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Runtime Info Bar -->
         <Border Grid.Row="1"
                 Background="{DynamicResource Brush.Surface}"
                 BorderBrush="{DynamicResource Brush.Border}"
                 BorderThickness="{StaticResource Border.Hairline}"
-                CornerRadius="{StaticResource Radius.Medium}"
-                Padding="24">
-            <TextBlock Text="System 제어 및 로그 화면 — Phase 3에서 Docker, Ollama, FastAPI 자동 기동 및 실시간 로그가 연결됩니다."
-                       Style="{StaticResource Text.BodyM}"
-                       VerticalAlignment="Center"
-                       HorizontalAlignment="Center" />
+                CornerRadius="{StaticResource Radius.Small}"
+                Padding="12,8"
+                Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="{Binding OperationSummary}"
+                           Style="{StaticResource Text.Caption}"
+                           Foreground="{DynamicResource Brush.TextSecondary}"
+                           VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding ProjectRoot, StringFormat='Root: {0}'}"
+                           FontFamily="{StaticResource Font.Mono}"
+                           FontSize="11"
+                           Foreground="{DynamicResource Brush.TextMuted}"
+                           VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <!-- Service Component Status Cards -->
+        <ItemsControl Grid.Row="2" ItemsSource="{Binding Services}" Margin="0,0,0,14">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Background="{DynamicResource Brush.Surface}"
+                            BorderBrush="{DynamicResource Brush.Border}"
+                            BorderThickness="{StaticResource Border.Hairline}"
+                            CornerRadius="{StaticResource Radius.Medium}"
+                            Padding="14,10"
+                            Margin="0,0,0,8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="8" Height="8"
+                                         Margin="0,0,8,0"
+                                         Fill="{Binding State, Converter={StaticResource ServiceStateToBrush}}" />
+                                <TextBlock Text="{Binding Description}" Style="{StaticResource Text.TitleS}" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border Background="{DynamicResource Brush.SurfaceSubtle}"
+                                        BorderBrush="{DynamicResource Brush.Border}"
+                                        BorderThickness="{StaticResource Border.Hairline}"
+                                        CornerRadius="{StaticResource Radius.Small}"
+                                        Padding="8,2"
+                                        Margin="0,0,6,0">
+                                    <TextBlock Text="{Binding OwnershipLabel}"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource Brush.TextSecondary}" />
+                                </Border>
+                                <Border Background="{DynamicResource Brush.PrimarySubtle}"
+                                        BorderBrush="{DynamicResource Brush.PrimaryBorder}"
+                                        BorderThickness="{StaticResource Border.Hairline}"
+                                        CornerRadius="{StaticResource Radius.Small}"
+                                        Padding="8,2">
+                                    <TextBlock Text="{Binding StatusText}"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource Brush.Primary}" />
+                                </Border>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="16,6,0,0">
+                                <TextBlock Text="{Binding DetailMessage}" Style="{StaticResource Text.Caption}" />
+                                <TextBlock Text="{Binding ActionHint}"
+                                           Style="{StaticResource Text.Caption}"
+                                           Foreground="{DynamicResource Brush.Warning}"
+                                           Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Real-Time System Log Viewer -->
+        <Border Grid.Row="3"
+                Background="{DynamicResource Brush.Surface}"
+                BorderBrush="{DynamicResource Brush.Border}"
+                BorderThickness="{StaticResource Border.Hairline}"
+                CornerRadius="{StaticResource Radius.Medium}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="36" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0"
+                        BorderBrush="{DynamicResource Brush.Border}"
+                        BorderThickness="0,0,0,1"
+                        Padding="12,0">
+                    <Grid>
+                        <TextBlock Text="실시간 시스템 및 서비스 로그"
+                                   Style="{StaticResource Text.TitleS}"
+                                   VerticalAlignment="Center" />
+                        <Button Content="로그 지우기"
+                                Style="{StaticResource Button.Secondary}"
+                                Command="{Binding ClearLogsCommand}"
+                                Padding="8,3"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+
+                <ListBox Grid.Row="1"
+                         ItemsSource="{Binding Logs}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         FontFamily="{StaticResource Font.Mono}"
+                         FontSize="11.5"
+                         Foreground="{DynamicResource Brush.TextSecondary}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                         Padding="8">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding FormattedLine}"
+                                       FontFamily="{StaticResource Font.Mono}"
+                                       FontSize="11.5"
+                                       TextWrapping="NoWrap" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
         </Border>
     </Grid>
 </UserControl>

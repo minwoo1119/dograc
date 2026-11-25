@@ -2,6 +2,8 @@ using System.Windows;
 using Dograc.App.Services;
 using Dograc.App.ViewModels;
 using Dograc.App.Views;
+using Dograc.App.Views.Dialogs;
+using Dograc.Core.Services;
 using Dograc.Core.Theme;
 using Dograc.Infrastructure.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,6 +14,7 @@ namespace Dograc.App;
 public partial class App : Application
 {
     private readonly IHost _host;
+    private readonly CancellationTokenSource _shutdownCts = new();
 
     public App()
     {
@@ -28,6 +31,7 @@ public partial class App : Application
                 services.AddSingleton<ModelsViewModel>();
                 services.AddSingleton<SystemViewModel>();
                 services.AddSingleton<SettingsViewModel>();
+                services.AddTransient<SetupWizardViewModel>();
                 services.AddSingleton<MainShellViewModel>();
 
                 services.AddSingleton<MainWindow>();
@@ -43,15 +47,41 @@ public partial class App : Application
         themeService.ApplyTheme(AppThemeMode.System);
 
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+        var shellViewModel = _host.Services.GetRequiredService<MainShellViewModel>();
+
+        shellViewModel.SetupWizardRequested += (_, summary) =>
+        {
+            var wizardVm = _host.Services.GetRequiredService<SetupWizardViewModel>();
+            wizardVm.LoadSummary(summary);
+            var wizard = new SetupWizardWindow(wizardVm) { Owner = mainWindow };
+            wizard.ShowDialog();
+        };
+
+        // Display Main Shell immediately, then inspect & auto-start services in background.
         mainWindow.Show();
+        _ = shellViewModel.InitializeAsync(_shutdownCts.Token);
 
         base.OnStartup(e);
     }
 
     protected override async void OnExit(ExitEventArgs e)
     {
+        _shutdownCts.Cancel();
+
+        try
+        {
+            var serviceManager = _host.Services.GetRequiredService<IServiceManager>();
+            await serviceManager.StopManagedServicesAsync();
+            serviceManager.Dispose();
+        }
+        catch
+        {
+            // Ensure application exits cleanly even if subprocess cleanup reports errors.
+        }
+
         await _host.StopAsync();
         _host.Dispose();
+        _shutdownCts.Dispose();
         base.OnExit(e);
     }
 }

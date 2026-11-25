@@ -12,7 +12,9 @@
             </ResourceDictionary.MergedDictionaries>
 
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+            <converters:BoolToVisibilityConverter x:Key="InverseBoolToVisibility" Invert="True" />
             <converters:EnumEqualsConverter x:Key="EnumEquals" />
+            <converters:ServiceStateToBrushConverter x:Key="ServiceStateToBrush" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

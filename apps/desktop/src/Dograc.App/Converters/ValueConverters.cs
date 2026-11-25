@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
+using System.Windows.Media;
+using Dograc.Core.Models;
 
 namespace Dograc.App.Converters;
 
@@ -30,4 +32,25 @@ public sealed class EnumEqualsConverter : IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         => value is true && parameter is not null ? parameter : Binding.DoNothing;
+}
+
+public sealed class ServiceStateToBrushConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        var key = value is ServiceState state
+            ? state switch
+            {
+                ServiceState.Ready => "Brush.Success",
+                ServiceState.Checking or ServiceState.Starting or ServiceState.Degraded => "Brush.Warning",
+                ServiceState.Error => "Brush.Danger",
+                _ => "Brush.TextMuted"
+            }
+            : "Brush.TextMuted";
+
+        return Application.Current?.TryFindResource(key) as Brush ?? Brushes.Gray;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => Binding.DoNothing;
 }
