@@ -21,4 +21,19 @@ public partial class MainWindow : Window
 
     private void OnCloseClick(object sender, RoutedEventArgs e)
         => Close();
+
+    private async void OnContextDocumentsDrop(object sender, DragEventArgs e)
+    {
+        if (DataContext is not MainShellViewModel shellVm)
+        {
+            return;
+        }
+
+        if (e.Data.GetDataPresent(DataFormats.FileDrop) &&
+            e.Data.GetData(DataFormats.FileDrop) is string[] files &&
+            files.Length > 0)
+        {
+            await shellVm.DocumentsPanel.UploadFilePathsAsync(files);
+        }
+    }
 }

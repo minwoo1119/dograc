@@ -1,8 +1,10 @@
 using Dograc.Core.Models;
 using Dograc.Core.Navigation;
 using Dograc.Core.Services;
+using Dograc.Infrastructure.Api;
 using Dograc.Infrastructure.Navigation;
 using Dograc.Infrastructure.Services;
+using Dograc.Infrastructure.State;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dograc.Infrastructure.DependencyInjection;
@@ -19,11 +21,19 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton(_ => new ServiceRuntimeOptions(
             ProjectRoot: ProjectRootResolver.ResolveProjectRoot()));
 
+        services.AddHttpClient<IDogracApiClient, DogracApiClient>((sp, client) =>
+        {
+            var options = sp.GetRequiredService<ServiceRuntimeOptions>();
+            client.BaseAddress = new Uri($"{options.ApiBaseUrl.TrimEnd('/')}/api/v1/");
+            client.Timeout = TimeSpan.FromSeconds(120);
+        });
+
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IProcessRunner, SystemProcessRunner>();
         services.AddSingleton<IHealthProbe, NetworkHealthProbe>();
         services.AddSingleton<IServiceManager, LocalServiceManager>();
         services.AddSingleton<IStartupOrchestrator, StartupOrchestrator>();
+        services.AddSingleton<IWorkspaceContext, WorkspaceContext>();
 
         return services;
     }

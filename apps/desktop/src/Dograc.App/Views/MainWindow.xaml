@@ -49,11 +49,8 @@
             Background="{DynamicResource Brush.Canvas}">
         <Grid>
             <Grid.RowDefinitions>
-                <!-- Custom Windows Title Bar -->
                 <RowDefinition Height="40" />
-                <!-- Main Shell Content -->
                 <RowDefinition Height="*" />
-                <!-- System Status Bar -->
                 <RowDefinition Height="28" />
             </Grid.RowDefinitions>
 
@@ -69,7 +66,6 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- Brand -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0">
                         <Border Width="22" Height="22"
                                 CornerRadius="{StaticResource Radius.Small}"
@@ -101,7 +97,6 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- Service Indicators & Window Controls -->
                     <StackPanel Grid.Column="2"
                                 Orientation="Horizontal"
                                 VerticalAlignment="Center"
@@ -164,7 +159,6 @@
                             <TextBlock FontFamily="{StaticResource Font.Icon}" Text="&#xE793;" FontSize="13" />
                         </Button>
 
-                        <!-- Window Caption Buttons -->
                         <Button Width="42" Height="40" Style="{StaticResource Button.IconGhost}" Click="OnMinimizeClick" ToolTip="최소화">
                             <TextBlock FontFamily="{StaticResource Font.Icon}" Text="&#xE921;" FontSize="10" />
                         </Button>
@@ -178,7 +172,7 @@
                 </Grid>
             </Border>
 
-            <!-- 2. Main Shell Body: Nav Rail + Sidebar + Workspace + Context Panel -->
+            <!-- 2. Main Shell Body -->
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="54" />
@@ -252,11 +246,18 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0"
-                                   Text="워크스페이스"
-                                   Style="{StaticResource Text.Caption}"
-                                   FontWeight="SemiBold"
-                                   Margin="2,2,2,6" />
+                        <Grid Grid.Row="0" Margin="2,2,2,6">
+                            <TextBlock Text="워크스페이스"
+                                       Style="{StaticResource Text.Caption}"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
+                            <Button Content="관리"
+                                    Style="{StaticResource Button.Secondary}"
+                                    Command="{Binding OpenWorkspacesPageCommand}"
+                                    Padding="6,2"
+                                    FontSize="11"
+                                    HorizontalAlignment="Right" />
+                        </Grid>
 
                         <ComboBox Grid.Row="1"
                                   ItemsSource="{Binding Workspaces}"
@@ -275,28 +276,59 @@
                                      Style="{StaticResource Input.Hairline}"
                                      Text="{Binding ConversationSearchQuery, UpdateSourceTrigger=PropertyChanged}"
                                      IsEnabled="{Binding IsApiReady}"
-                                     ToolTip="대화 검색"
+                                     ToolTip="대화 제목 검색"
                                      Margin="0,0,6,0" />
                             <Button Grid.Column="1"
                                     Style="{StaticResource Button.Primary}"
+                                    Command="{Binding CreateConversationCommand}"
                                     Content="+ 새 대화"
                                     IsEnabled="{Binding IsApiReady}"
                                     Padding="10,6" />
                         </Grid>
 
-                        <Border Grid.Row="3"
-                                Background="{DynamicResource Brush.SurfaceSubtle}"
-                                BorderBrush="{DynamicResource Brush.Border}"
-                                BorderThickness="{StaticResource Border.Hairline}"
-                                CornerRadius="{StaticResource Radius.Small}"
-                                Padding="12">
-                            <TextBlock Text="API 준비 후 Phase 4에서 대화 목록이 표시됩니다."
-                                       Style="{StaticResource Text.Caption}"
-                                       TextWrapping="Wrap"
-                                       VerticalAlignment="Center"
-                                       HorizontalAlignment="Center"
-                                       TextAlignment="Center" />
-                        </Border>
+                        <ListBox Grid.Row="3"
+                                 ItemsSource="{Binding FilteredConversations}"
+                                 SelectedItem="{Binding SelectedConversation}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 HorizontalContentAlignment="Stretch"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{DynamicResource Brush.SurfaceSubtle}"
+                                            BorderBrush="{DynamicResource Brush.Border}"
+                                            BorderThickness="{StaticResource Border.Hairline}"
+                                            CornerRadius="{StaticResource Radius.Small}"
+                                            Padding="8,7"
+                                            Margin="0,0,0,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                                <TextBlock Text="{Binding Title}"
+                                                           FontSize="12.5"
+                                                           FontWeight="Medium"
+                                                           Foreground="{DynamicResource Brush.TextPrimary}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding UpdatedAt, StringFormat='{}{0:MM-dd HH:mm}'}"
+                                                           Style="{StaticResource Text.Caption}"
+                                                           FontSize="10.5" />
+                                            </StackPanel>
+                                            <Button Grid.Column="1"
+                                                    Style="{StaticResource Button.IconGhost}"
+                                                    Width="24" Height="24"
+                                                    Command="{Binding DataContext.DeleteConversationCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="대화 삭제">
+                                                <TextBlock FontFamily="{StaticResource Font.Icon}" Text="&#xE74D;" FontSize="11" />
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                     </Grid>
                 </Border>
 
@@ -307,7 +339,7 @@
                               Background="Transparent"
                               Visibility="{Binding IsSidebarVisible, Converter={StaticResource BoolToVisibility}}" />
 
-                <!-- 2.3 Central AI Workspace + Non-blocking Startup Banner -->
+                <!-- 2.3 Central AI Workspace + Startup Banner -->
                 <Grid Grid.Column="3" Background="{DynamicResource Brush.Canvas}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -360,7 +392,7 @@
                               Background="Transparent"
                               Visibility="{Binding IsContextPanelVisible, Converter={StaticResource BoolToVisibility}}" />
 
-                <!-- 2.4 Right Collapsible Context Panel -->
+                <!-- 2.4 Right Collapsible Context Panel (Documents / Evidence / Preview) -->
                 <Border Grid.Column="5"
                         Visibility="{Binding IsContextPanelVisible, Converter={StaticResource BoolToVisibility}}"
                         Background="{DynamicResource Brush.Surface}"
@@ -397,12 +429,153 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Row="1" Padding="14">
-                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                <TextBlock Text="{Binding SelectedContextTab, StringFormat='Context Panel: {0}'}"
+                        <!-- Context Tab 1: Documents (Connected to DocumentsViewModel) -->
+                        <Grid Grid.Row="1"
+                              DataContext="{Binding DocumentsPanel}"
+                              Visibility="{Binding DataContext.IsDocumentsContextTab, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"
+                              Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                <TextBlock Text="{Binding ActiveWorkspaceName}"
                                            Style="{StaticResource Text.TitleS}"
-                                           HorizontalAlignment="Center" />
-                                <TextBlock Text="Documents(Phase 4), Evidence(Phase 5), Preview(Phase 6)가 이 영역에 표시됩니다."
+                                           TextTrimming="CharacterEllipsis"
+                                           VerticalAlignment="Center" />
+                                <Button Content="새로고침"
+                                        Style="{StaticResource Button.Secondary}"
+                                        Command="{Binding RefreshCommand}"
+                                        IsEnabled="{Binding IsNotBusy}"
+                                        Padding="8,3"
+                                        FontSize="11"
+                                        HorizontalAlignment="Right" />
+                            </Grid>
+
+                            <Border Grid.Row="1"
+                                    AllowDrop="True"
+                                    Drop="OnContextDocumentsDrop"
+                                    Background="{DynamicResource Brush.SurfaceSubtle}"
+                                    BorderBrush="{DynamicResource Brush.BorderStrong}"
+                                    BorderThickness="{StaticResource Border.Hairline}"
+                                    CornerRadius="{StaticResource Radius.Small}"
+                                    Padding="10"
+                                    Margin="0,0,0,8">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="PDF / TXT 끌어다 놓기"
+                                               Style="{StaticResource Text.TitleS}"
+                                               FontSize="12"
+                                               HorizontalAlignment="Center" />
+                                    <Button Content="파일 선택 업로드"
+                                            Style="{StaticResource Button.Primary}"
+                                            Command="{Binding BrowseAndUploadCommand}"
+                                            IsEnabled="{Binding IsNotBusy}"
+                                            Padding="10,4"
+                                            FontSize="11.5"
+                                            Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Row="2"
+                                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyToVisibility}}"
+                                    Background="{DynamicResource Brush.DangerSubtle}"
+                                    BorderBrush="{DynamicResource Brush.Danger}"
+                                    BorderThickness="{StaticResource Border.Hairline}"
+                                    CornerRadius="{StaticResource Radius.Small}"
+                                    Padding="8,6"
+                                    Margin="0,0,0,8">
+                                <TextBlock Text="{Binding ErrorMessage}"
+                                           FontSize="11.5"
+                                           Foreground="{DynamicResource Brush.Danger}"
+                                           TextWrapping="Wrap" />
+                            </Border>
+
+                            <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding Documents}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource Brush.Surface}"
+                                                    BorderBrush="{DynamicResource Brush.Border}"
+                                                    BorderThickness="{StaticResource Border.Hairline}"
+                                                    CornerRadius="{StaticResource Radius.Small}"
+                                                    Padding="10,8"
+                                                    Margin="0,0,0,6">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <TextBlock Grid.Row="0" Grid.Column="0"
+                                                               Text="{Binding SourceFileName}"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource Brush.TextPrimary}"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip="{Binding SourceFileName}" />
+
+                                                    <Button Grid.Row="0" Grid.Column="1"
+                                                            Style="{StaticResource Button.IconGhost}"
+                                                            Width="22" Height="22"
+                                                            Command="{Binding DataContext.DeleteDocumentCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            ToolTip="문서 삭제">
+                                                        <TextBlock FontFamily="{StaticResource Font.Icon}" Text="&#xE74D;" FontSize="11" />
+                                                    </Button>
+
+                                                    <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                                                Orientation="Horizontal" Margin="0,6,0,0">
+                                                        <Ellipse Width="7" Height="7" Margin="0,0,5,0"
+                                                                 Fill="{Binding Status, Converter={StaticResource DocumentStatusToBrush}}" />
+                                                        <TextBlock Text="{Binding StatusLabel}"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource Brush.TextSecondary}"
+                                                                   VerticalAlignment="Center" />
+                                                        <Button Content="색인 시작"
+                                                                Style="{StaticResource Button.Secondary}"
+                                                                Visibility="{Binding CanTriggerProcess, Converter={StaticResource BoolToVisibility}}"
+                                                                Command="{Binding DataContext.ProcessDocumentCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                CommandParameter="{Binding}"
+                                                                Padding="6,2"
+                                                                FontSize="10.5"
+                                                                Margin="8,0,0,0" />
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+
+                        <!-- Context Tab 2: Evidence (Phase 5) -->
+                        <Border Grid.Row="1"
+                                Visibility="{Binding IsEvidenceContextTab, Converter={StaticResource BoolToVisibility}}"
+                                Padding="16">
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <TextBlock Text="Evidence Panel" Style="{StaticResource Text.TitleS}" HorizontalAlignment="Center" />
+                                <TextBlock Text="Phase 5에서 답변의 검색 청크, 유사도, 사용 모델 및 응답 시간이 표시됩니다."
+                                           Style="{StaticResource Text.Caption}"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
+                                           Margin="0,6,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Context Tab 3: Preview (Phase 6) -->
+                        <Border Grid.Row="1"
+                                Visibility="{Binding IsPreviewContextTab, Converter={StaticResource BoolToVisibility}}"
+                                Padding="16">
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <TextBlock Text="PDF Preview Panel" Style="{StaticResource Text.TitleS}" HorizontalAlignment="Center" />
+                                <TextBlock Text="Phase 6에서 PDF 원문 및 인용 페이지 확인 뷰가 연결됩니다."
                                            Style="{StaticResource Text.Caption}"
                                            TextWrapping="Wrap"
                                            TextAlignment="Center"
@@ -424,7 +597,7 @@
                                Style="{StaticResource Text.Caption}"
                                VerticalAlignment="Center"
                                HorizontalAlignment="Left" />
-                    <TextBlock Text="dograc Desktop · Phase 3"
+                    <TextBlock Text="dograc Desktop · Phase 4"
                                Style="{StaticResource Text.Caption}"
                                VerticalAlignment="Center"
                                HorizontalAlignment="Right" />
