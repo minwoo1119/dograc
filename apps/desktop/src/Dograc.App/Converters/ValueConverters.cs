@@ -34,6 +34,15 @@ public sealed class EnumEqualsConverter : IValueConverter
         => value is true && parameter is not null ? parameter : Binding.DoNothing;
 }
 
+public sealed class StringNotEmptyToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        => value is string s && !string.IsNullOrWhiteSpace(s) ? Visibility.Visible : Visibility.Collapsed;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => Binding.DoNothing;
+}
+
 public sealed class ServiceStateToBrushConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -47,6 +56,26 @@ public sealed class ServiceStateToBrushConverter : IValueConverter
                 _ => "Brush.TextMuted"
             }
             : "Brush.TextMuted";
+
+        return Application.Current?.TryFindResource(key) as Brush ?? Brushes.Gray;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => Binding.DoNothing;
+}
+
+public sealed class DocumentStatusToBrushConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        var status = (value as string)?.ToLowerInvariant();
+        var key = status switch
+        {
+            "ready" => "Brush.Success",
+            "processing" => "Brush.Primary",
+            "failed" => "Brush.Danger",
+            _ => "Brush.TextMuted"
+        };
 
         return Application.Current?.TryFindResource(key) as Brush ?? Brushes.Gray;
     }

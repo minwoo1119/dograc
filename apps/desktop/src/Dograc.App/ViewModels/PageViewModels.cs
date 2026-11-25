@@ -20,18 +20,6 @@ public sealed class ChatViewModel : PageViewModelBase
     public override string PageDescription => "선택한 워크스페이스의 문서를 근거로 질의응답을 수행합니다.";
 }
 
-public sealed class DocumentsViewModel : PageViewModelBase
-{
-    public override string PageTitle => "Documents";
-    public override string PageDescription => "워크스페이스별 문서를 업로드하고 색인 상태를 관리합니다.";
-}
-
-public sealed class WorkspacesViewModel : PageViewModelBase
-{
-    public override string PageTitle => "Workspaces";
-    public override string PageDescription => "주제별 지식 워크스페이스를 생성, 선택 및 삭제합니다.";
-}
-
 public sealed class ModelsViewModel : PageViewModelBase
 {
     public override string PageTitle => "Models";
