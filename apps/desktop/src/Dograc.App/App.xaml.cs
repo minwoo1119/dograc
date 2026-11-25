@@ -25,6 +25,7 @@ public partial class App : Application
 
                 services.AddSingleton<IThemeService, ThemeService>();
 
+                services.AddSingleton<EvidenceViewModel>();
                 services.AddSingleton<ChatViewModel>();
                 services.AddSingleton<DocumentsViewModel>();
                 services.AddSingleton<WorkspacesViewModel>();
@@ -57,7 +58,6 @@ public partial class App : Application
             wizard.ShowDialog();
         };
 
-        // Display Main Shell immediately, then inspect & auto-start services in background.
         mainWindow.Show();
         _ = shellViewModel.InitializeAsync(_shutdownCts.Token);
 
