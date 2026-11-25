@@ -57,7 +57,7 @@ public sealed partial class EvidenceViewModel : ObservableObject
 
     public ObservableCollection<EvidenceChunkItem> Chunks { get; } = [];
 
-    public event EventHandler<CitationReference>? PreviewRequested;
+    public event EventHandler<PreviewDocumentRequest>? PreviewRequested;
 
     public async Task LoadTraceAsync(EvidenceSelectionRequest request)
     {
@@ -121,7 +121,7 @@ public sealed partial class EvidenceViewModel : ObservableObject
             return;
         }
 
-        PreviewRequested?.Invoke(this, new CitationReference(chunk.SourceFileName, chunk.PageNumber));
+        PreviewRequested?.Invoke(this, new PreviewDocumentRequest(chunk.SourceFileName, chunk.PageNumber, chunk.Text));
     }
 
     private void ApplyTrace(TraceDto trace, EvidenceSelectionRequest request)

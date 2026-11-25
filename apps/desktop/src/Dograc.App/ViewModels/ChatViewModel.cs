@@ -70,10 +70,12 @@ public sealed partial class ChatViewModel : PageViewModelBase
 {
     private readonly IDogracApiClient _apiClient;
     private readonly IWorkspaceContext _workspaceContext;
+    private readonly ISettingsStore _settingsStore;
 
     private Guid? _loadedConversationId;
     private CancellationTokenSource? _loadCts;
     private CancellationTokenSource? _generationCts;
+    private bool _isSyncingSettings;
 
     [ObservableProperty]
     private bool _hasWorkspace;
@@ -114,10 +116,12 @@ public sealed partial class ChatViewModel : PageViewModelBase
 
     public ChatViewModel(
         IDogracApiClient apiClient,
-        IWorkspaceContext workspaceContext)
+        IWorkspaceContext workspaceContext,
+        ISettingsStore settingsStore)
     {
         _apiClient = apiClient;
         _workspaceContext = workspaceContext;
+        _settingsStore = settingsStore;
 
         AvailableModels =
         [
@@ -127,8 +131,45 @@ public sealed partial class ChatViewModel : PageViewModelBase
             "deepseek-r1:8b"
         ];
 
+        ApplySettings(_settingsStore.Current);
+        _settingsStore.SettingsChanged += (_, updated) => RunOnUiThread(() => ApplySettings(updated));
+
         SyncFromWorkspaceContext();
         _workspaceContext.StateChanged += (_, _) => RunOnUiThread(SyncFromWorkspaceContext);
+    }
+
+    partial void OnSelectedModelNameChanged(string value)
+    {
+        if (_isSyncingSettings || string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        var trimmed = value.Trim();
+        if (!string.Equals(_settingsStore.Current.SelectedModelName, trimmed, StringComparison.Ordinal))
+        {
+            _settingsStore.Save(_settingsStore.Current with { SelectedModelName = trimmed });
+        }
+    }
+
+    private void ApplySettings(AppSettings settings)
+    {
+        _isSyncingSettings = true;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(settings.SelectedModelName) &&
+                !AvailableModels.Contains(settings.SelectedModelName))
+            {
+                AvailableModels.Insert(0, settings.SelectedModelName);
+            }
+
+            SelectedModelName = settings.SelectedModelName;
+            OllamaEndpointUrl = settings.NormalizedOllamaV1Endpoint;
+        }
+        finally
+        {
+            _isSyncingSettings = false;
+        }
     }
 
     public override string PageTitle => "AI Chat Workspace";

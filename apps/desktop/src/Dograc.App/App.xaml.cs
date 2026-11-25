@@ -26,6 +26,7 @@ public partial class App : Application
                 services.AddSingleton<IThemeService, ThemeService>();
 
                 services.AddSingleton<EvidenceViewModel>();
+                services.AddSingleton<PreviewViewModel>();
                 services.AddSingleton<ChatViewModel>();
                 services.AddSingleton<DocumentsViewModel>();
                 services.AddSingleton<WorkspacesViewModel>();
@@ -44,8 +45,9 @@ public partial class App : Application
     {
         await _host.StartAsync();
 
+        var settingsStore = _host.Services.GetRequiredService<ISettingsStore>();
         var themeService = _host.Services.GetRequiredService<IThemeService>();
-        themeService.ApplyTheme(AppThemeMode.System);
+        themeService.ApplyTheme(settingsStore.Current.ThemeMode);
 
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         var shellViewModel = _host.Services.GetRequiredService<MainShellViewModel>();
@@ -70,8 +72,13 @@ public partial class App : Application
 
         try
         {
+            var settingsStore = _host.Services.GetRequiredService<ISettingsStore>();
             var serviceManager = _host.Services.GetRequiredService<IServiceManager>();
-            await serviceManager.StopManagedServicesAsync();
+            if (settingsStore.Current.StopManagedServicesOnExit)
+            {
+                await serviceManager.StopManagedServicesAsync();
+            }
+
             serviceManager.Dispose();
         }
         catch
