@@ -17,6 +17,7 @@ public sealed record EvidenceChunkItem(
 {
     public string MetaLabel => $"Page {PageNumber} · Chunk {ChunkNumber}";
     public string ScoreLabel => $"{Score * 100.0:0.0}%";
+    public string SimilarityDisplayLabel => $"유사도 {ScoreLabel}";
 }
 
 /// <summary>
@@ -59,6 +60,8 @@ public sealed partial class EvidenceViewModel : ObservableObject
     public event EventHandler<PreviewDocumentRequest>? PreviewRequested;
 
     public event EventHandler<string>? PromptDialogRequested;
+
+    public event EventHandler<int>? HighlightedChunkChanged;
 
     public async Task LoadTraceAsync(EvidenceSelectionRequest request)
     {
@@ -163,12 +166,17 @@ public sealed partial class EvidenceViewModel : ObservableObject
             built[0] = built[0] with { IsHighlighted = true };
         }
 
+        var highlightedIndex = built.FindIndex(item => item.IsHighlighted);
         foreach (var item in built)
         {
             Chunks.Add(item);
         }
 
         ChunkCountLabel = $"검색된 발췌문 {Chunks.Count}개";
+        if (highlightedIndex >= 0)
+        {
+            HighlightedChunkChanged?.Invoke(this, highlightedIndex);
+        }
     }
 
     private static void RunOnUiThread(Action action)

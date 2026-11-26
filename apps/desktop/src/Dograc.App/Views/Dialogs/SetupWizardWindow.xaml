@@ -64,90 +64,97 @@
                 </Button>
             </Grid>
 
-            <!-- Detailed Diagnostic Checklist -->
+            <!-- Detailed Diagnostic Checklist (Required vs Optional clearly separated) -->
             <ScrollViewer Grid.Row="1" MaxHeight="480" VerticalScrollBarVisibility="Auto" Margin="0,16,0,0">
-                <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0">
-                    <ItemsControl ItemsSource="{Binding DiagnosticItems}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border BorderBrush="{DynamicResource Brush.Border}"
-                                        BorderThickness="0,0,0,1"
-                                        Padding="4,13">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="24" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-
-                                        <Ellipse Grid.Column="0"
-                                                 Width="8" Height="8"
-                                                 Fill="{Binding State, Converter={StaticResource ServiceStateToBrush}}"
-                                                 VerticalAlignment="Top"
-                                                 HorizontalAlignment="Left"
-                                                 Margin="2,6,0,0" />
-
-                                        <StackPanel Grid.Column="1" Margin="0,0,12,0">
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Name}"
-                                                           FontSize="13.5"
-                                                           FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource Brush.TextPrimary}" />
-                                                <Border Background="{DynamicResource Brush.Side}"
-                                                        BorderBrush="{DynamicResource Brush.Border}"
-                                                        BorderThickness="1"
-                                                        CornerRadius="4"
-                                                        Padding="6,1"
-                                                        Margin="8,0,0,0">
-                                                    <TextBlock Text="{Binding StatusBadge}"
-                                                               FontSize="11"
-                                                               FontWeight="Medium"
-                                                               Foreground="{Binding State, Converter={StaticResource ServiceStateToBrush}}" />
-                                                </Border>
+                <StackPanel>
+                    <TextBlock Text="필수 구성 요소 (앱 실행에 반드시 필요)"
+                               Style="{StaticResource Text.SidebarLabel}"
+                               Margin="4,0,0,8" />
+                    <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0" Margin="0,0,0,18">
+                        <ItemsControl ItemsSource="{Binding RequiredItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1" Padding="4,12">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="22" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse Grid.Column="0" Width="8" Height="8" Fill="{Binding State, Converter={StaticResource ServiceStateToBrush}}" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="2,6,0,0" />
+                                            <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource Brush.TextPrimary}" />
+                                                    <Border Background="{DynamicResource Brush.Side}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4" Padding="6,1" Margin="8,0,0,0">
+                                                        <TextBlock Text="{Binding StatusBadge}" FontSize="11" FontWeight="Medium" Foreground="{Binding State, Converter={StaticResource ServiceStateToBrush}}" />
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock FontSize="11.5" Foreground="{DynamicResource Brush.TextMuted}" Margin="0,4,0,0" TextWrapping="Wrap">
+                                                    <Run Text="감지 버전: " />
+                                                    <Run Text="{Binding DetectedVersion, Mode=OneWay}" Foreground="{DynamicResource Brush.TextSecondary}" />
+                                                    <Run Text="  ·  요구: " />
+                                                    <Run Text="{Binding RequiredVersion, Mode=OneWay}" />
+                                                    <Run Text="  ·  경로: " />
+                                                    <Run Text="{Binding ExecutableOrPath, Mode=OneWay}" FontFamily="{StaticResource Font.Mono}" />
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding FailureReason}" Visibility="{Binding FailureReason, Converter={StaticResource StringNotEmptyToVisibility}}" FontSize="12" Foreground="{DynamicResource Brush.Error}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                                <TextBlock Text="{Binding Resolution}" FontSize="12" Foreground="{DynamicResource Brush.TextSecondary}" TextWrapping="Wrap" Margin="0,3,0,0" />
                                             </StackPanel>
+                                            <Button Grid.Column="2" Style="{StaticResource Button.Link}" Content="설치 가이드 ↗" VerticalAlignment="Top"
+                                                    Visibility="{Binding OfficialGuideUrl, Converter={StaticResource StringNotEmptyToVisibility}}"
+                                                    Command="{Binding DataContext.OpenGuideUrlCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding OfficialGuideUrl}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
 
-                                            <!-- Version & Path Metadata -->
-                                            <TextBlock FontSize="11.5"
-                                                       Foreground="{DynamicResource Brush.TextMuted}"
-                                                       Margin="0,4,0,0"
-                                                       TextWrapping="Wrap">
-                                                <Run Text="감지 버전: " />
-                                                <Run Text="{Binding DetectedVersion, Mode=OneWay}" Foreground="{DynamicResource Brush.TextSecondary}" />
-                                                <Run Text="  ·  요구: " />
-                                                <Run Text="{Binding RequiredVersion, Mode=OneWay}" />
-                                                <Run Text="  ·  경로: " />
-                                                <Run Text="{Binding ExecutableOrPath, Mode=OneWay}" FontFamily="{StaticResource Font.Mono}" />
-                                            </TextBlock>
-
-                                            <!-- Failure Reason (when unsatisfied) -->
-                                            <TextBlock Text="{Binding FailureReason}"
-                                                       Visibility="{Binding FailureReason, Converter={StaticResource StringNotEmptyToVisibility}}"
-                                                       FontSize="12"
-                                                       Foreground="{DynamicResource Brush.Error}"
-                                                       TextWrapping="Wrap"
-                                                       Margin="0,4,0,0" />
-
-                                            <!-- Actionable Resolution -->
-                                            <TextBlock Text="{Binding Resolution}"
-                                                       FontSize="12"
-                                                       Foreground="{DynamicResource Brush.TextSecondary}"
-                                                       TextWrapping="Wrap"
-                                                       Margin="0,3,0,0" />
-                                        </StackPanel>
-
-                                        <Button Grid.Column="2"
-                                                Style="{StaticResource Button.Link}"
-                                                Content="설치 가이드 ↗"
-                                                VerticalAlignment="Top"
-                                                Visibility="{Binding OfficialGuideUrl, Converter={StaticResource StringNotEmptyToVisibility}}"
-                                                Command="{Binding DataContext.OpenGuideUrlCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                CommandParameter="{Binding OfficialGuideUrl}" />
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </Border>
+                    <TextBlock Text="선택적 구성 요소 (로컬 인프라 · AI 모델 권장)"
+                               Style="{StaticResource Text.SidebarLabel}"
+                               Margin="4,0,0,8" />
+                    <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0">
+                        <ItemsControl ItemsSource="{Binding OptionalItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,0,0,1" Padding="4,12">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="22" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse Grid.Column="0" Width="8" Height="8" Fill="{Binding State, Converter={StaticResource ServiceStateToBrush}}" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="2,6,0,0" />
+                                            <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource Brush.TextPrimary}" />
+                                                    <Border Background="{DynamicResource Brush.Side}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4" Padding="6,1" Margin="8,0,0,0">
+                                                        <TextBlock Text="{Binding StatusBadge}" FontSize="11" FontWeight="Medium" Foreground="{Binding State, Converter={StaticResource ServiceStateToBrush}}" />
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock FontSize="11.5" Foreground="{DynamicResource Brush.TextMuted}" Margin="0,4,0,0" TextWrapping="Wrap">
+                                                    <Run Text="감지 버전: " />
+                                                    <Run Text="{Binding DetectedVersion, Mode=OneWay}" Foreground="{DynamicResource Brush.TextSecondary}" />
+                                                    <Run Text="  ·  요구: " />
+                                                    <Run Text="{Binding RequiredVersion, Mode=OneWay}" />
+                                                    <Run Text="  ·  경로: " />
+                                                    <Run Text="{Binding ExecutableOrPath, Mode=OneWay}" FontFamily="{StaticResource Font.Mono}" />
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding FailureReason}" Visibility="{Binding FailureReason, Converter={StaticResource StringNotEmptyToVisibility}}" FontSize="12" Foreground="{DynamicResource Brush.Warning}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                                <TextBlock Text="{Binding Resolution}" FontSize="12" Foreground="{DynamicResource Brush.TextSecondary}" TextWrapping="Wrap" Margin="0,3,0,0" />
+                                            </StackPanel>
+                                            <Button Grid.Column="2" Style="{StaticResource Button.Link}" Content="설치 가이드 ↗" VerticalAlignment="Top"
+                                                    Visibility="{Binding OfficialGuideUrl, Converter={StaticResource StringNotEmptyToVisibility}}"
+                                                    Command="{Binding DataContext.OpenGuideUrlCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding OfficialGuideUrl}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+                </StackPanel>
             </ScrollViewer>
 
             <!-- Footer -->
@@ -180,9 +187,11 @@
                             IsEnabled="{Binding IsNotRetrying}"
                             Command="{Binding RecheckOnlyCommand}" />
                     <Button Style="{StaticResource Button.Primary}"
-                            Content="다시 검사 및 시작"
+                            Content="{Binding StartButtonLabel}"
+                            ToolTip="{Binding StartButtonTooltip}"
+                            ToolTipService.ShowOnDisabled="True"
                             Margin="8,0,0,0"
-                            IsEnabled="{Binding IsNotRetrying}"
+                            IsEnabled="{Binding CanStartServices}"
                             Command="{Binding RecheckAndStartCommand}" />
                 </StackPanel>
             </Grid>

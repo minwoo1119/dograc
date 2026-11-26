@@ -20,12 +20,25 @@ public interface ISettingsStore
     string? ResolveDocumentLocalPath(string fileName);
 }
 
+public sealed record OllamaPullProgress(
+    string Status,
+    long CompletedBytes,
+    long TotalBytes,
+    int Percent);
+
 /// <summary>
-/// Queries a local Ollama server for connectivity and available models.
+/// Queries a local Ollama server for connectivity, available models, and in-app model pulls.
 /// </summary>
 public interface IOllamaService
 {
     Task<OllamaConnectionResult> CheckAndListModelsAsync(string endpointUrl, CancellationToken cancellationToken = default);
+
+    Task PullModelAsync(
+        string endpointUrl,
+        string modelName,
+        IProgress<OllamaPullProgress>? progress = null,
+        CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("이 Ollama 서비스 구현은 인앱 모델 다운로드를 지원하지 않습니다.");
 }
 
 /// <summary>

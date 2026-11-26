@@ -17,6 +17,23 @@ public partial class MainWindow : Window
 
         _viewModel.PreviewPanel.PdfUriChanged += (_, uri) =>
             _ = Dispatcher.InvokeAsync(() => NavigatePdfPreviewAsync(uri));
+
+        _viewModel.EvidencePanel.HighlightedChunkChanged += (_, chunkIndex) =>
+            _ = Dispatcher.InvokeAsync(() => ScrollEvidenceChunkIntoView(chunkIndex), System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    private void ScrollEvidenceChunkIntoView(int chunkIndex)
+    {
+        if (chunkIndex < 0 || EvidenceChunksControl.Items.Count <= chunkIndex)
+        {
+            return;
+        }
+
+        EvidenceChunksControl.UpdateLayout();
+        if (EvidenceChunksControl.ItemContainerGenerator.ContainerFromIndex(chunkIndex) is FrameworkElement container)
+        {
+            container.BringIntoView();
+        }
     }
 
     private void OnMinimizeClick(object sender, RoutedEventArgs e)
