@@ -15,8 +15,8 @@
   <img src="https://img.shields.io/badge/Qdrant-Vector_DB-DC2626?style=flat-square" alt="Qdrant" />
   <img src="https://img.shields.io/badge/Ollama-Local_LLM-purple?style=flat-square" alt="Ollama" />
   <img src="https://img.shields.io/badge/Velopack-1.2.161-6F42C1?style=flat-square" alt="Velopack" />
-  <img src="https://img.shields.io/badge/Tests-xUnit_23_+_pytest_59-009688?style=flat-square" alt="Tests" />
-  <img src="https://img.shields.io/badge/Release-v0.2.0-5055B1?style=flat-square" alt="Release v0.2.0" />
+  <img src="https://img.shields.io/badge/Tests-xUnit_43_+_pytest_62-009688?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/Release-v0.3.0-5055B1?style=flat-square" alt="Release v0.3.0" />
 </p>
 
 </div>
@@ -137,14 +137,14 @@ flowchart TD
 | **Backend API** | **FastAPI 0.115**, SQLAlchemy 2.0 (Async), Alembic, Pydantic v2 | 비동기 고성능 RAG 백엔드 서버 및 실행 Trace 영속화 |
 | **Storage** | **PostgreSQL 16**, **Qdrant**, **MinIO (S3 Compatible)** | 워크스페이스 메타데이터, 벡터 인덱스, 문서 원본 불변 보관 |
 | **AI / RAG** | **Ollama** (`qwen2.5:7b`), **vLLM**, `BAAI/bge-m3`, PyMuPDF | 모듈형 로컬 임베딩 및 오픈소스 LLM 추론 |
-| **Tooling & Test** | **xUnit** (23 passing), **pytest** (59 passing), **Docker Compose**, **uv** | 클라이언트·백엔드 자동화 단위/통합 테스트 및 격리 로컬 인프라 |
+| **Tooling & Test** | **xUnit** (43 passing), **pytest** (62 passing), **Docker Compose**, **uv** | 클라이언트·백엔드 자동화 단위/통합·장애 주입 테스트 및 격리 로컬 인프라 |
 | **Legacy (보존 중)** | Python Tkinter (`launcher/`), Next.js 14 (`apps/web/`) | 기능 동등성 최종 검증 완료 전까지 참고·폴백용으로 보존 |
 
 ---
 
 ## 5. 다운로드 및 설치 가이드 (Download & Installation)
 
-최신 공식 릴리스(`v0.2.0`)는 [GitHub Releases](https://github.com/minwoo1119/dograc/releases/latest)에서 다운로드할 수 있습니다.
+최신 공식 릴리스(`v0.3.0`)는 [GitHub Releases](https://github.com/minwoo1119/dograc/releases/latest)에서 다운로드할 수 있습니다.
 
 ### 어떤 파일을 다운로드해야 하나요?
 
