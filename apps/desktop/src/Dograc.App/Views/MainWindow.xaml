@@ -32,6 +32,7 @@
 
     <Window.InputBindings>
         <KeyBinding Key="K" Modifiers="Control" Command="{Binding OpenQuickCommandPaletteCommand}" />
+        <KeyBinding Key="N" Modifiers="Control" Command="{Binding CreateConversationCommand}" />
     </Window.InputBindings>
 
     <Window.Resources>
@@ -176,15 +177,18 @@
                                    VerticalAlignment="Center" />
                     </StackPanel>
 
-                    <!-- Centered Command Search Trigger (Ctrl+K) -->
+                    <!-- Centered Command Search Trigger (Ctrl+K, responsive width) -->
                     <Button Grid.Column="1"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True"
                             Command="{Binding OpenQuickCommandPaletteCommand}"
-                            HorizontalAlignment="Center"
+                            HorizontalAlignment="Stretch"
                             VerticalAlignment="Center"
-                            Width="360"
+                            MinWidth="180"
+                            MaxWidth="360"
                             Height="30"
+                            Margin="20,0"
                             Cursor="Hand"
+                            ToolTip="빠른 명령 및 검색 팔레트 열기 (Ctrl+K)"
                             FocusVisualStyle="{StaticResource FocusVisual.Accent}">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
@@ -390,7 +394,7 @@
                                     VerticalAlignment="Center"
                                     Command="{Binding NavigateCommand}"
                                     CommandParameter="{x:Static nav:NavigationPage.Settings}"
-                                    ToolTip="Settings"
+                                    ToolTip="Settings — 테마 · 환경 · 업데이트 설정"
                                     Cursor="Hand"
                                     FocusVisualStyle="{StaticResource FocusVisual.Accent}">
                                 <Button.Style>
@@ -403,7 +407,7 @@
                                                     <Border x:Name="Bd"
                                                             Background="{TemplateBinding Background}"
                                                             CornerRadius="6">
-                                                        <Viewbox Width="20" Height="20">
+                                                        <Viewbox Width="22" Height="22">
                                                             <Path Data="{StaticResource Icon.Settings}"
                                                                   Stroke="{TemplateBinding Foreground}"
                                                                   StrokeThickness="1.6"
@@ -479,7 +483,7 @@
                                                                 <Border x:Name="Bd"
                                                                         Background="{TemplateBinding Background}"
                                                                         CornerRadius="6">
-                                                                    <Viewbox Width="20" Height="20">
+                                                                    <Viewbox Width="22" Height="22">
                                                                         <Path Data="{Binding Glyph, Converter={StaticResource IconKeyToGeometry}}"
                                                                               Stroke="{TemplateBinding Foreground}"
                                                                               StrokeThickness="1.6"
@@ -547,13 +551,24 @@
                                           ToolTip="활성 워크스페이스 선택" />
                             </StackPanel>
 
-                            <!-- Primary + 새 대화 Button -->
+                            <!-- Primary 새 대화 Button with Vector Plus Icon (Ctrl+N) -->
                             <Button Grid.Row="1"
                                     Style="{StaticResource Button.Primary}"
-                                    Content="+ 새 대화"
                                     Height="36"
                                     Margin="0,10,0,0"
-                                    Command="{Binding CreateConversationCommand}" />
+                                    ToolTip="새 대화 시작 (Ctrl+N)"
+                                    Command="{Binding CreateConversationCommand}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <Viewbox Width="14" Height="14" Margin="0,0,6,0" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource Icon.Plus}"
+                                              Stroke="{DynamicResource Brush.TextOnPrimary}"
+                                              StrokeThickness="2"
+                                              StrokeStartLineCap="Round"
+                                              Width="24" Height="24" />
+                                    </Viewbox>
+                                    <TextBlock Text="새 대화" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
 
                             <!-- Conversation Search -->
                             <TextBox Grid.Row="2"
@@ -595,6 +610,9 @@
                                                                 </Border.Style>
                                                                 <Border.ContextMenu>
                                                                     <ContextMenu>
+                                                                        <MenuItem Header="대화 열기"
+                                                                                  Command="{Binding DataContext.SelectConversationRowCommand, Source={x:Reference RootShellProxy}}"
+                                                                                  CommandParameter="{Binding}" />
                                                                         <MenuItem Header="대화 삭제"
                                                                                   Command="{Binding DataContext.DeleteConversationCommand, Source={x:Reference RootShellProxy}}"
                                                                                   CommandParameter="{Binding Conversation}" />
@@ -613,6 +631,7 @@
                                                                             HorizontalContentAlignment="Left"
                                                                             VerticalContentAlignment="Center"
                                                                             Cursor="Hand"
+                                                                            ToolTip="{Binding Title}"
                                                                             Command="{Binding DataContext.SelectConversationRowCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                             CommandParameter="{Binding}">
                                                                         <Button.Template>
@@ -966,8 +985,9 @@
                             </ScrollViewer>
                         </Grid>
 
-                        <!-- TAB 2: EVIDENCE (Flat hairline-separated entries, NO nested card boxes!) -->
-                        <ScrollViewer Grid.Row="1"
+                        <!-- TAB 2: EVIDENCE (Flat hairline-separated entries, auto-scroll to highlighted chunk) -->
+                        <ScrollViewer x:Name="EvidenceScrollViewer"
+                                      Grid.Row="1"
                                       Visibility="{Binding IsEvidenceContextTab, Converter={StaticResource BoolToVisibility}}"
                                       VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="16,14,16,20">
@@ -1037,7 +1057,8 @@
                                 </StackPanel>
 
                                 <!-- Flat Hairline-Separated Chunks -->
-                                <ItemsControl Visibility="{Binding EvidencePanel.HasTrace, Converter={StaticResource BoolToVisibility}}"
+                                <ItemsControl x:Name="EvidenceChunksControl"
+                                              Visibility="{Binding EvidencePanel.HasTrace, Converter={StaticResource BoolToVisibility}}"
                                               ItemsSource="{Binding EvidencePanel.Chunks}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -1062,6 +1083,7 @@
 
                                                 <StackPanel>
                                                     <TextBlock Text="{Binding SourceFileName}"
+                                                               ToolTip="{Binding SourceFileName}"
                                                                FontSize="13"
                                                                FontWeight="SemiBold"
                                                                Foreground="{DynamicResource Brush.TextPrimary}"
@@ -1077,7 +1099,8 @@
                                                                    FontSize="11.5"
                                                                    Foreground="{DynamicResource Brush.TextMuted}" />
                                                         <TextBlock Grid.Column="1"
-                                                                   Text="{Binding ScoreLabel}"
+                                                                   Text="{Binding SimilarityDisplayLabel}"
+                                                                   ToolTip="벡터 검색 유사도 점수입니다 (답변의 절대적 신뢰도와는 별개입니다)."
                                                                    FontSize="11.5"
                                                                    Foreground="{DynamicResource Brush.TextMuted}"
                                                                    Margin="8,0,0,0" />

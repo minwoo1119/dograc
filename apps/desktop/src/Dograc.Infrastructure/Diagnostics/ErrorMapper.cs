@@ -696,8 +696,8 @@ public sealed class ErrorMapper : IErrorMapper
                 "IDX-004", ErrorSeverity.Error, ErrorCategory.DocumentIndexing,
                 "문서 색인 실패 [단계: Vector Indexing]",
                 "벡터 데이터베이스(Qdrant)에 색인 데이터를 저장하지 못했습니다.",
-                "색인 도중 Qdrant 연결이 중단되었거나 컬렉션 쓰기 오류가 발생했습니다.", true,
-                "부분 색인 데이터는 자동 정리되었으며 해당 문서는 아직 검색되지 않습니다.",
+                "색인 도중 Qdrant 연결이 중단되었거나 컬렉션 쓰기 오류가 발생했을 수 있습니다.", false,
+                "해당 문서는 아직 검색에 반영되지 않았습니다. 부분 데이터 정리 상태는 System 로그에서 확인할 수 있습니다.",
                 "Docker/Qdrant 상태를 확인하고 [서비스 시작] 후 [색인 다시 시작]을 눌러 주세요.",
                 [
                     new(RecoveryActionKind.StartServices, "서비스 시작", IsPrimary: true),
@@ -713,8 +713,8 @@ public sealed class ErrorMapper : IErrorMapper
                 "IDX-005", ErrorSeverity.Error, ErrorCategory.DocumentIndexing,
                 "문서 색인 실패 [단계: DB 저장]",
                 "문서 메타데이터와 청크를 데이터베이스에 기록하는 단계에서 실패했습니다.",
-                "데이터베이스 연결 중단 또는 트랜잭션 오류가 발생했습니다.", true,
-                "트랜잭션이 안전하게 롤백되어 기존 데이터 손상은 없습니다.",
+                "데이터베이스 연결 중단 또는 트랜잭션 오류가 발생했을 수 있습니다.", false,
+                "해당 문서의 색인이 완료되지 않았으며 기존 색인 데이터에 영향이 없도록 트랜잭션 롤백을 시도했습니다.",
                 "서비스 상태를 확인한 뒤 [색인 다시 시작]을 눌러 주세요.",
                 [
                     new(RecoveryActionKind.ReindexDocument, "색인 다시 시작", IsPrimary: true),

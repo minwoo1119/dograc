@@ -45,4 +45,4 @@ async def process_document(
             chunk_overlap=request.app.state.settings.chunk_overlap_chars,
         ),
     ).process(document_id=document_id, owner_id=user_id)
-    return DocumentResponse.model_validate(document)
+    return DocumentResponse.from_document(document)

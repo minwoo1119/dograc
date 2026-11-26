@@ -12,9 +12,9 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- Helper proxy for ContextMenu DataContext binding -->
             <FrameworkElement x:Name="DocsPageProxy" Visibility="Collapsed" />
 
             <!-- Page Header -->
@@ -27,7 +27,7 @@
             </StackPanel>
 
             <!-- Action Toolbar -->
-            <Grid Grid.Row="1" Margin="0,22,0,18">
+            <Grid Grid.Row="1" Margin="0,22,0,14">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
@@ -37,19 +37,24 @@
 
                 <TextBox Grid.Column="0"
                          Style="{StaticResource Input.Hairline}"
-                         Width="280"
+                         Width="260"
                          Height="36"
                          Tag="문서 이름 검색..."
                          Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" />
 
                 <ComboBox Grid.Column="1"
-                          Width="140"
+                          Width="136"
                           Height="36"
                           Margin="10,0,0,0"
                           ItemsSource="{Binding StatusFilters}"
                           SelectedItem="{Binding SelectedStatusFilter}" />
 
                 <StackPanel Grid.Column="3" Orientation="Horizontal">
+                    <Button Style="{StaticResource Button.Ghost}"
+                            Content="작업 취소"
+                            Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"
+                            Margin="0,0,6,0"
+                            Command="{Binding CancelCurrentOperationCommand}" />
                     <Button Style="{StaticResource Button.Secondary}"
                             Content="새로고침"
                             IsEnabled="{Binding IsNotBusy}"
@@ -62,28 +67,96 @@
                 </StackPanel>
             </Grid>
 
-            <!-- Flat Hairline Table -->
-            <StackPanel Grid.Row="2">
-                <!-- Table Header (36 DIP) -->
+            <!-- Multi-Select Batch Action Bar (visible only when rows selected) -->
+            <Border Grid.Row="2"
+                    Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}"
+                    Background="{DynamicResource Brush.Selected}"
+                    CornerRadius="8"
+                    Padding="12,8"
+                    Margin="0,0,0,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding SelectionSummaryLabel}"
+                               FontSize="12.5"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource Brush.Accent}"
+                               VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Style="{StaticResource Button.Secondary}"
+                                Height="28" Padding="10,0" FontSize="12"
+                                Content="선택 재색인"
+                                IsEnabled="{Binding IsNotBusy}"
+                                Command="{Binding ReindexSelectedCommand}" />
+                        <Button Style="{StaticResource Button.Secondary}"
+                                Height="28" Padding="10,0" FontSize="12"
+                                Margin="6,0,0,0"
+                                Content="선택 삭제"
+                                IsEnabled="{Binding IsNotBusy}"
+                                Command="{Binding DeleteSelectedCommand}" />
+                        <Button Style="{StaticResource Button.Ghost}"
+                                Height="28" Padding="8,0" FontSize="12"
+                                Margin="4,0,0,0"
+                                Content="선택 해제"
+                                Command="{Binding ClearSelectionCommand}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Flat Hairline Table with Real Metadata & Sorting -->
+            <StackPanel Grid.Row="3">
                 <Border BorderBrush="{DynamicResource Brush.Border}"
                         BorderThickness="0,1,0,1"
                         Height="36"
                         Padding="8,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="34" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="100" />
-                            <ColumnDefinition Width="140" />
-                            <ColumnDefinition Width="48" />
+                            <ColumnDefinition Width="82" />
+                            <ColumnDefinition Width="68" />
+                            <ColumnDefinition Width="72" />
+                            <ColumnDefinition Width="128" />
+                            <ColumnDefinition Width="150" />
+                            <ColumnDefinition Width="40" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="파일명" Style="{StaticResource Text.SidebarLabel}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="1" Text="형식" Style="{StaticResource Text.SidebarLabel}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="2" Text="상태" Style="{StaticResource Text.SidebarLabel}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="3" Text="" />
+
+                        <CheckBox Grid.Column="0"
+                                  IsChecked="{Binding AreAllSelected, Mode=OneWay}"
+                                  Command="{Binding ToggleSelectAllCommand}"
+                                  VerticalAlignment="Center"
+                                  HorizontalAlignment="Left"
+                                  ToolTip="전체 선택 / 해제" />
+
+                        <Button Grid.Column="1" Style="{StaticResource Button.Ghost}" Padding="0,2" HorizontalAlignment="Left"
+                                Command="{Binding SortByCommand}" CommandParameter="Name" ToolTip="파일명 정렬">
+                            <TextBlock Text="파일명 ↕" Style="{StaticResource Text.SidebarLabel}" />
+                        </Button>
+
+                        <Button Grid.Column="2" Style="{StaticResource Button.Ghost}" Padding="0,2" HorizontalAlignment="Left"
+                                Command="{Binding SortByCommand}" CommandParameter="Size" ToolTip="크기 정렬">
+                            <TextBlock Text="크기 ↕" Style="{StaticResource Text.SidebarLabel}" />
+                        </Button>
+
+                        <TextBlock Grid.Column="3" Text="페이지" Style="{StaticResource Text.SidebarLabel}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="4" Text="청크" Style="{StaticResource Text.SidebarLabel}" VerticalAlignment="Center" />
+
+                        <Button Grid.Column="5" Style="{StaticResource Button.Ghost}" Padding="0,2" HorizontalAlignment="Left"
+                                Command="{Binding SortByCommand}" CommandParameter="UploadedAt" ToolTip="업로드 일시 정렬">
+                            <TextBlock Text="업로드 일시 ↕" Style="{StaticResource Text.SidebarLabel}" />
+                        </Button>
+
+                        <Button Grid.Column="6" Style="{StaticResource Button.Ghost}" Padding="0,2" HorizontalAlignment="Left"
+                                Command="{Binding SortByCommand}" CommandParameter="Status" ToolTip="상태 정렬">
+                            <TextBlock Text="상태 ↕" Style="{StaticResource Text.SidebarLabel}" />
+                        </Button>
                     </Grid>
                 </Border>
 
-                <!-- Table Rows (46 DIP, flat hairline dividers, hover tint) -->
+                <!-- Rows -->
                 <ItemsControl ItemsSource="{Binding FilteredDocuments}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -98,42 +171,76 @@
                                             <Trigger Property="IsMouseOver" Value="True">
                                                 <Setter Property="Background" Value="{DynamicResource Brush.Hover}" />
                                             </Trigger>
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Selected}" />
+                                            </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Border.Style>
 
                                 <Grid>
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34" />
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="100" />
-                                        <ColumnDefinition Width="140" />
-                                        <ColumnDefinition Width="48" />
+                                        <ColumnDefinition Width="82" />
+                                        <ColumnDefinition Width="68" />
+                                        <ColumnDefinition Width="72" />
+                                        <ColumnDefinition Width="128" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="40" />
                                     </Grid.ColumnDefinitions>
 
-                                    <TextBlock Grid.Column="0"
+                                    <CheckBox Grid.Column="0"
+                                              IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Left" />
+
+                                    <TextBlock Grid.Column="1"
                                                Text="{Binding SourceFileName}"
+                                               ToolTip="{Binding SourceFileName}"
                                                FontSize="13.5"
                                                FontWeight="Medium"
                                                Foreground="{DynamicResource Brush.TextPrimary}"
                                                TextTrimming="CharacterEllipsis"
-                                               VerticalAlignment="Center" />
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,12,0" />
 
-                                    <TextBlock Grid.Column="1"
-                                               Text="{Binding FileFormat}"
-                                               FontSize="12.5"
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding SizeLabel}"
+                                               FontSize="12"
                                                Foreground="{DynamicResource Brush.TextMuted}"
                                                VerticalAlignment="Center" />
 
-                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Grid.Column="3"
+                                               Text="{Binding PageCountLabel}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource Brush.TextMuted}"
+                                               VerticalAlignment="Center" />
+
+                                    <TextBlock Grid.Column="4"
+                                               Text="{Binding ChunkCountLabel}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource Brush.TextMuted}"
+                                               VerticalAlignment="Center" />
+
+                                    <TextBlock Grid.Column="5"
+                                               Text="{Binding UploadedAtLabel}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource Brush.TextMuted}"
+                                               VerticalAlignment="Center" />
+
+                                    <StackPanel Grid.Column="6" Orientation="Horizontal" VerticalAlignment="Center">
                                         <Ellipse Width="7" Height="7"
                                                  Fill="{Binding Status, Converter={StaticResource DocumentStatusToBrush}}"
                                                  Margin="0,0,7,0" />
                                         <TextBlock Text="{Binding StatusLabel}"
+                                                   ToolTip="{Binding StatusLabel}"
                                                    FontSize="12.5"
-                                                   Foreground="{DynamicResource Brush.TextSecondary}" />
+                                                   Foreground="{DynamicResource Brush.TextSecondary}"
+                                                   TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
 
-                                    <Button Grid.Column="3"
+                                    <Button Grid.Column="7"
                                             Style="{StaticResource Button.IconGhost}"
                                             Width="28" Height="28"
                                             HorizontalAlignment="Right"
@@ -144,8 +251,12 @@
                                                 <MenuItem Header="원문 보기"
                                                           Command="{Binding DataContext.OpenInPreviewCommand, Source={x:Reference DocsPageProxy}}"
                                                           CommandParameter="{Binding}" />
-                                                <MenuItem Header="색인 시작"
+                                                <MenuItem Header="색인 다시 시작"
                                                           Command="{Binding DataContext.ProcessDocumentCommand, Source={x:Reference DocsPageProxy}}"
+                                                          CommandParameter="{Binding}" />
+                                                <MenuItem Header="실패 원인 상세 보기"
+                                                          Visibility="{Binding IsFailed, Converter={StaticResource BoolToVisibility}}"
+                                                          Command="{Binding DataContext.InspectDocumentFailureCommand, Source={x:Reference DocsPageProxy}}"
                                                           CommandParameter="{Binding}" />
                                                 <MenuItem Header="삭제"
                                                           Command="{Binding DataContext.DeleteDocumentCommand, Source={x:Reference DocsPageProxy}}"
@@ -167,8 +278,8 @@
                 </ItemsControl>
             </StackPanel>
 
-            <!-- Structured ErrorCard + Status Footer -->
-            <StackPanel Grid.Row="3" Margin="0,16,0,0">
+            <!-- Structured ErrorCard (no duplicate Toast!) + Status Footer -->
+            <StackPanel Grid.Row="4" Margin="0,16,0,0">
                 <controls:ErrorCardControl Visibility="{Binding ActiveError, Converter={StaticResource NullToVisibility}}"
                                            Error="{Binding ActiveError}"
                                            ActionCommand="{Binding ExecuteErrorActionCommand}"

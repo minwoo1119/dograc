@@ -40,6 +40,27 @@ public sealed partial class SetupWizardViewModel : ObservableObject
     public bool IsNotRetrying => !IsRetrying;
 
     public ObservableCollection<EnvironmentDiagnosticItem> DiagnosticItems { get; } = [];
+    public ObservableCollection<EnvironmentDiagnosticItem> RequiredItems { get; } = [];
+    public ObservableCollection<EnvironmentDiagnosticItem> OptionalItems { get; } = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanStartServices))]
+    [NotifyPropertyChangedFor(nameof(StartButtonLabel))]
+    [NotifyPropertyChangedFor(nameof(StartButtonTooltip))]
+    private bool _areRequiredItemsReady;
+
+    public bool CanStartServices => IsNotRetrying && AreRequiredItemsReady;
+
+    public string StartButtonLabel => AreRequiredItemsReady ? "서비스 시작" : "필수 항목 구성 필요";
+
+    public string StartButtonTooltip => AreRequiredItemsReady
+        ? "필수 항목이 모두 준비되었습니다. 클릭하여 로컬 서비스를 시작합니다."
+        : "필수 구성 요소가 아직 준비되지 않았습니다. 위 안내를 완료한 뒤 [다시 검사]를 눌러 주세요.";
+
+    partial void OnIsRetryingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanStartServices));
+    }
 
     public event EventHandler? Completed;
 
@@ -95,14 +116,29 @@ public sealed partial class SetupWizardViewModel : ObservableObject
                 summary.HasOllamaService ? ServiceState.Ready : ServiceState.NotInstalled));
         }
 
-        var missingRequired = DiagnosticItems.Count(d => d.IsRequired && !d.IsSatisfied);
-        var optionalWarnings = DiagnosticItems.Count(d => !d.IsRequired && !d.IsSatisfied);
+        RequiredItems.Clear();
+        OptionalItems.Clear();
+        foreach (var item in DiagnosticItems)
+        {
+            if (item.IsRequired)
+            {
+                RequiredItems.Add(item);
+            }
+            else
+            {
+                OptionalItems.Add(item);
+            }
+        }
+
+        var missingRequired = RequiredItems.Count(d => !d.IsSatisfied);
+        var optionalWarnings = OptionalItems.Count(d => !d.IsSatisfied);
+        AreRequiredItemsReady = missingRequired == 0;
 
         SummaryMessage = missingRequired > 0
-            ? $"필수 항목 {missingRequired}건의 구성이 필요합니다. 아래 해결 방법을 확인한 뒤 [다시 검사 및 시작]을 눌러 주세요."
+            ? $"필수 구성 요소 {missingRequired}건이 준비되지 않아 서비스를 시작할 수 없습니다. 아래 해결 방법을 완료한 뒤 [다시 검사]를 눌러 주세요."
             : optionalWarnings > 0
-                ? $"필수 항목은 모두 준비되었습니다 (권장 항목 {optionalWarnings}건 미실행). 바로 시작하거나 권장 도구를 실행할 수 있습니다."
-                : "모든 필수 및 권장 환경이 정상 준비되었습니다.";
+                ? $"필수 구성 요소는 모두 준비되었습니다 (선택적 권장 항목 {optionalWarnings}건 미실행). 지금 바로 서비스를 시작할 수 있습니다."
+                : "모든 필수 및 선택적 권장 구성 요소가 정상 준비되었습니다.";
     }
 
     [RelayCommand]

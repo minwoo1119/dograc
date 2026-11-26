@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -100,6 +101,7 @@ public sealed partial class ChatViewModel : PageViewModelBase
     private readonly ISettingsStore _settingsStore;
     private readonly IErrorHandlingService? _errorHandling;
     private readonly IRecoveryActionService? _recoveryService;
+    private readonly IServiceManager? _serviceManager;
 
     private Guid? _loadedConversationId;
     private CancellationTokenSource? _loadCts;
@@ -165,13 +167,15 @@ public sealed partial class ChatViewModel : PageViewModelBase
         IWorkspaceContext workspaceContext,
         ISettingsStore settingsStore,
         IErrorHandlingService? errorHandling = null,
-        IRecoveryActionService? recoveryService = null)
+        IRecoveryActionService? recoveryService = null,
+        IServiceManager? serviceManager = null)
     {
         _apiClient = apiClient;
         _workspaceContext = workspaceContext;
         _settingsStore = settingsStore;
         _errorHandling = errorHandling;
         _recoveryService = recoveryService;
+        _serviceManager = serviceManager;
 
         AvailableModels =
         [
@@ -432,8 +436,14 @@ public sealed partial class ChatViewModel : PageViewModelBase
         {
             OptimisticUserMessage = null;
             FailedQuestion = question;
+            if (ex is HttpRequestException && _serviceManager is not null)
+            {
+                _ = _serviceManager.RefreshStatusesAsync();
+            }
+
             var ctx = new ErrorContext("Chat", "API", "답변 생성");
-            ActiveError = _errorHandling?.Handle(ex, ctx, RetryFailedAsync, notifyToast: true);
+            // Inline ErrorCard is shown directly inside ChatView -> suppress duplicate Toast!
+            ActiveError = _errorHandling?.Handle(ex, ctx, RetryFailedAsync, notifyToast: false);
             ErrorMessage = ActiveError?.Description ?? ex.Message;
         }
         finally

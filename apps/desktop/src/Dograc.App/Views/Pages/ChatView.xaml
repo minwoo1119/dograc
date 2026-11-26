@@ -8,6 +8,7 @@
             <RowDefinition Height="60" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- Chat Header (60 DIP, 1px hairline bottom border) -->
@@ -270,18 +271,27 @@
                         </Grid>
                     </Border>
 
-                    <!-- Structured ErrorCard with Recovery Actions & Diagnostic Details -->
-                    <controls:ErrorCardControl Visibility="{Binding ActiveError, Converter={StaticResource NullToVisibility}}"
-                                               Error="{Binding ActiveError}"
-                                               ActionCommand="{Binding ExecuteErrorActionCommand}"
-                                               DismissCommand="{Binding DismissErrorCommand}"
-                                               Margin="0,0,0,20" />
                 </StackPanel>
             </Grid>
         </ScrollViewer>
 
-        <!-- Bottom Composer (MaxWidth 720, min-height 96, radius 12) -->
+        <!-- Structured ErrorCard pinned above Composer so it is NEVER clipped or hidden by Chat Composer -->
         <Border Grid.Row="2"
+                Visibility="{Binding ActiveError, Converter={StaticResource NullToVisibility}}"
+                Background="{DynamicResource Brush.Canvas}"
+                Padding="28,8,28,4">
+            <ScrollViewer MaxWidth="720"
+                          MaxHeight="280"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <controls:ErrorCardControl Error="{Binding ActiveError}"
+                                           ActionCommand="{Binding ExecuteErrorActionCommand}"
+                                           DismissCommand="{Binding DismissErrorCommand}" />
+            </ScrollViewer>
+        </Border>
+
+        <!-- Bottom Composer (MaxWidth 720, min-height 96, radius 12) -->
+        <Border Grid.Row="3"
                 Background="{DynamicResource Brush.Canvas}"
                 Padding="28,6,28,20">
             <Border MaxWidth="720"

@@ -49,8 +49,28 @@ public sealed record DocumentDto(
     [property: JsonPropertyName("status")] string Status,
     [property: JsonPropertyName("failure_code")] string? FailureCode,
     [property: JsonPropertyName("created_at")] DateTimeOffset CreatedAt,
-    [property: JsonPropertyName("updated_at")] DateTimeOffset UpdatedAt)
+    [property: JsonPropertyName("updated_at")] DateTimeOffset UpdatedAt,
+    [property: JsonPropertyName("size_bytes")] long? SizeBytes = null,
+    [property: JsonPropertyName("page_count")] int? PageCount = null,
+    [property: JsonPropertyName("chunk_count")] int? ChunkCount = null)
 {
+    [JsonIgnore]
+    public string SizeLabel => SizeBytes switch
+    {
+        null or < 0 => "-",
+        >= 1024 * 1024 => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{SizeBytes.Value / (1024.0 * 1024.0):0.0} MB"),
+        >= 1024 => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{SizeBytes.Value / 1024.0:0.0} KB"),
+        _ => $"{SizeBytes.Value} B"
+    };
+
+    [JsonIgnore]
+    public string PageCountLabel => PageCount is > 0 ? $"{PageCount.Value}p" : "-";
+
+    [JsonIgnore]
+    public string ChunkCountLabel => ChunkCount is > 0 ? $"{ChunkCount.Value}개" : "-";
+
+    [JsonIgnore]
+    public string UploadedAtLabel => CreatedAt.LocalDateTime.ToString("yyyy-MM-dd HH:mm");
     [JsonIgnore]
     public string StatusLabel => Status.ToLowerInvariant() switch
     {

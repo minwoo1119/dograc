@@ -293,13 +293,13 @@ public sealed partial class MainShellViewModel : ObservableObject
 
         TopNavigationItems =
         [
-            new NavigationItem(NavigationPage.Chat, "Chat", "Icon.Chat", "Chat"),
-            new NavigationItem(NavigationPage.Documents, "Documents", "Icon.Documents", "Documents"),
-            new NavigationItem(NavigationPage.Workspaces, "Workspaces", "Icon.Workspaces", "Workspaces"),
-            new NavigationItem(NavigationPage.Models, "Models", "Icon.Models", "Models"),
-            new NavigationItem(NavigationPage.System, "System", "Icon.System", "System")
+            new NavigationItem(NavigationPage.Chat, "Chat", "Icon.Chat", "Chat — AI 문서 질의응답"),
+            new NavigationItem(NavigationPage.Documents, "Documents", "Icon.Documents", "Documents — 문서 업로드 및 색인 관리"),
+            new NavigationItem(NavigationPage.Workspaces, "Workspaces", "Icon.Workspaces", "Workspaces — 워크스페이스 관리"),
+            new NavigationItem(NavigationPage.Models, "Models", "Icon.Models", "Models — 로컬 LLM 모델 및 다운로드"),
+            new NavigationItem(NavigationPage.System, "System", "Icon.System", "System — 서비스 상태 및 진단 로그")
         ];
-        SettingsNavigationItem = new NavigationItem(NavigationPage.Settings, "Settings", "Icon.Settings", "Settings");
+        SettingsNavigationItem = new NavigationItem(NavigationPage.Settings, "Settings", "Icon.Settings", "Settings — 테마 · 환경 · 업데이트 설정");
 
         NavigationItems = [.. TopNavigationItems, SettingsNavigationItem];
 
@@ -1021,32 +1021,30 @@ public sealed partial class MainShellViewModel : ObservableObject
     private void UpdateHealthSummary()
     {
         var apiStatus = ServiceStatuses.FirstOrDefault(s => s.Key == "api");
-        var anyDegraded = ServiceStatuses.Any(s => s.State == ServiceState.Degraded);
-        var anyError = ServiceStatuses.Any(s => s.State is ServiceState.Failed or ServiceState.Error or ServiceState.Unreachable);
+        var allReady = ServiceStatuses.Count > 0 && ServiceStatuses.All(s => s.State == ServiceState.Ready);
+        var anyNonReady = ServiceStatuses.Any(s => s.State != ServiceState.Ready);
+        var apiBroken = apiStatus is not null && apiStatus.State is ServiceState.Stopped or ServiceState.Failed or ServiceState.Error or ServiceState.Unreachable or ServiceState.NotInstalled;
 
-        if (apiStatus?.State == ServiceState.Ready && !anyDegraded && !anyError)
+        if (allReady)
         {
             TitleStatusText = "Local Ready";
             OverallServiceState = ServiceState.Ready;
             StatusBarSummary = "All services operational";
         }
-        else if (apiStatus?.State == ServiceState.Degraded || (IsApiReady && (anyDegraded || anyError)))
+        else if (apiBroken || StartupState is StartupState.Failed or StartupState.NeedsSetup)
         {
+            TitleStatusText = "서비스 확인 필요";
+            OverallServiceState = ServiceState.Error;
+            StatusBarSummary = apiStatus?.DetailMessage ?? "로컬 백엔드 서비스가 준비되지 않았습니다 (System 확인)";
+        }
+        else if (apiStatus is not null && apiStatus.IsUsable && anyNonReady)
+        {
+            var degradedNames = ServiceStatuses
+                .Where(s => s.State != ServiceState.Ready)
+                .Select(s => $"{s.DisplayName}({s.StatusText})");
             TitleStatusText = "일부 서비스 확인 필요";
             OverallServiceState = ServiceState.Degraded;
-            StatusBarSummary = "백엔드 응답 중 · 일부 하위 서비스(Docker/Ollama) 상태를 확인해 주세요";
-        }
-        else if (IsApiReady || StartupState == StartupState.Ready)
-        {
-            TitleStatusText = "Local Ready";
-            OverallServiceState = ServiceState.Ready;
-            StatusBarSummary = "All services operational";
-        }
-        else if (StartupState is StartupState.Failed or StartupState.NeedsSetup)
-        {
-            TitleStatusText = "환경 확인 필요";
-            OverallServiceState = ServiceState.Error;
-            StatusBarSummary = "로컬 환경 확인 필요";
+            StatusBarSummary = $"부분 준비 — {string.Join(", ", degradedNames)}";
         }
         else
         {

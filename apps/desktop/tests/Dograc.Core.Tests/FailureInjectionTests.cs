@@ -376,6 +376,39 @@ public sealed class FailureInjectionTests
         }
     }
 
+    // Extra: DocumentDto real metadata formatting and honest null fallback
+    [Fact]
+    public void DocumentDto_FormatsRealMetadataAndUsesDashWhenAbsent()
+    {
+        var populated = new DocumentDto(
+            Guid.NewGuid(), Guid.NewGuid(), "긴_사내_보안_감사_보고서_2026_최종본.pdf",
+            "application/pdf", "ready", null, DateTimeOffset.Now, DateTimeOffset.Now,
+            SizeBytes: 2_621_440, PageCount: 24, ChunkCount: 68);
+        var unindexed = new DocumentDto(
+            Guid.NewGuid(), Guid.NewGuid(), "pending.txt",
+            "text/plain", "uploaded", null, DateTimeOffset.Now, DateTimeOffset.Now);
+
+        Assert.Equal("2.5 MB", populated.SizeLabel);
+        Assert.Equal("24p", populated.PageCountLabel);
+        Assert.Equal("68개", populated.ChunkCountLabel);
+        Assert.Equal("-", unindexed.SizeLabel);
+        Assert.Equal("-", unindexed.PageCountLabel);
+        Assert.Equal("-", unindexed.ChunkCountLabel);
+    }
+
+    // Extra: IDX-004 uses honest inferred cause (IsConfirmedCause=false)
+    [Fact]
+    public void Idx004_MarksInferredCauseHonestlyWithoutFalseRollbackClaim()
+    {
+        var apiEx = new ApiException(500, "Qdrant vector error", "DOCUMENT_PROCESSING_FAILED", pipelineStage: "vector_indexing");
+        var err = _mapper.Map(apiEx, new ErrorContext("Documents", "API", "문서 색인"));
+
+        Assert.Equal("IDX-004", err.ErrorCode);
+        Assert.False(err.IsConfirmedCause);
+        Assert.Equal("추정 원인", err.CausePrefixLabel);
+        Assert.DoesNotContain("자동 정리되었으며", err.Impact);
+    }
+
     // Extra: Sensitive data sanitizer masks tokens, keys, emails, and prompt blocks
     [Fact]
     public void SensitiveDataSanitizer_MasksSecretsAndPromptContent()
