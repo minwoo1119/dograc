@@ -7,12 +7,28 @@ using Dograc.Core.Services;
 
 namespace Dograc.App.ViewModels;
 
+public sealed record WorkspaceRowViewModel(
+    WorkspaceDto Dto,
+    bool IsActive,
+    string Subtitle)
+{
+    public Guid Id => Dto.Id;
+    public string Name => Dto.Name;
+    public bool IsNotActive => !IsActive;
+}
+
 /// <summary>
-/// Manages workspace listing, creation, selection, and deletion against FastAPI.
+/// Manages workspace listing, search filtering, creation, selection, and deletion against FastAPI.
 /// </summary>
 public sealed partial class WorkspacesViewModel : PageViewModelBase
 {
     private readonly IWorkspaceContext _workspaceContext;
+
+    [ObservableProperty]
+    private string _searchQuery = string.Empty;
+
+    [ObservableProperty]
+    private bool _showCurrentOnly;
 
     [ObservableProperty]
     private string _newWorkspaceName = string.Empty;
@@ -25,35 +41,50 @@ public sealed partial class WorkspacesViewModel : PageViewModelBase
     private string? _errorMessage;
 
     [ObservableProperty]
-    private string _statusMessage = "워크스페이스를 생성하거나 선택하여 문서를 분리 관리하세요.";
-
-    [ObservableProperty]
     private WorkspaceDto? _activeWorkspace;
 
     public WorkspacesViewModel(IWorkspaceContext workspaceContext)
     {
         _workspaceContext = workspaceContext;
         Workspaces = new ObservableCollection<WorkspaceDto>(_workspaceContext.Workspaces);
-        _activeWorkspace = _workspaceContext.SelectedWorkspace;
+        FilteredWorkspaces = new ObservableCollection<WorkspaceRowViewModel>();
+        SyncFromContext();
 
         _workspaceContext.StateChanged += (_, _) => RunOnUiThread(SyncFromContext);
     }
 
     public override string PageTitle => "Workspaces";
-    public override string PageDescription => "주제별 지식 워크스페이스를 생성, 선택 및 삭제합니다.";
+    public override string PageDescription => "프로젝트별 문서와 대화를 관리합니다.";
 
     public bool IsNotBusy => !IsBusy;
 
     public ObservableCollection<WorkspaceDto> Workspaces { get; }
 
+    public ObservableCollection<WorkspaceRowViewModel> FilteredWorkspaces { get; }
+
+    public event EventHandler? NewWorkspaceDialogRequested;
+
+    partial void OnSearchQueryChanged(string value) => RebuildFiltered();
+
+    partial void OnShowCurrentOnlyChanged(bool value) => RebuildFiltered();
+
+    public void ApplySidebarFilter(string filter)
+    {
+        ShowCurrentOnly = filter.Contains("현재", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [RelayCommand]
+    private void RequestNewWorkspaceDialog()
+    {
+        NewWorkspaceName = string.Empty;
+        ErrorMessage = null;
+        NewWorkspaceDialogRequested?.Invoke(this, EventArgs.Empty);
+    }
+
     [RelayCommand]
     private async Task RefreshAsync()
     {
-        await RunGuardedAsync(async () =>
-        {
-            await _workspaceContext.LoadWorkspacesAsync();
-            StatusMessage = $"총 {Workspaces.Count}개의 워크스페이스를 불러왔습니다.";
-        });
+        await RunGuardedAsync(() => _workspaceContext.LoadWorkspacesAsync());
     }
 
     [RelayCommand]
@@ -68,30 +99,37 @@ public sealed partial class WorkspacesViewModel : PageViewModelBase
 
         await RunGuardedAsync(async () =>
         {
-            var created = await _workspaceContext.CreateWorkspaceAsync(trimmed);
+            await _workspaceContext.CreateWorkspaceAsync(trimmed);
             NewWorkspaceName = string.Empty;
-            StatusMessage = $"'{created.Name}' 워크스페이스를 생성했습니다.";
         });
     }
 
     [RelayCommand]
-    private async Task SelectWorkspaceAsync(WorkspaceDto? workspace)
+    private async Task SelectWorkspaceAsync(object? item)
     {
+        var workspace = item switch
+        {
+            WorkspaceDto ws => ws,
+            WorkspaceRowViewModel row => row.Dto,
+            _ => null
+        };
         if (workspace is null)
         {
             return;
         }
 
-        await RunGuardedAsync(async () =>
-        {
-            await _workspaceContext.SelectWorkspaceAsync(workspace.Id);
-            StatusMessage = $"'{workspace.Name}' 워크스페이스가 활성화되었습니다.";
-        });
+        await RunGuardedAsync(() => _workspaceContext.SelectWorkspaceAsync(workspace.Id));
     }
 
     [RelayCommand]
-    private async Task DeleteWorkspaceAsync(WorkspaceDto? workspace)
+    private async Task DeleteWorkspaceAsync(object? item)
     {
+        var workspace = item switch
+        {
+            WorkspaceDto ws => ws,
+            WorkspaceRowViewModel row => row.Dto,
+            _ => null
+        };
         if (workspace is null)
         {
             return;
@@ -108,11 +146,7 @@ public sealed partial class WorkspacesViewModel : PageViewModelBase
             return;
         }
 
-        await RunGuardedAsync(async () =>
-        {
-            await _workspaceContext.DeleteWorkspaceAsync(workspace.Id);
-            StatusMessage = $"'{workspace.Name}' 워크스페이스를 삭제했습니다.";
-        });
+        await RunGuardedAsync(() => _workspaceContext.DeleteWorkspaceAsync(workspace.Id));
     }
 
     private void SyncFromContext()
@@ -124,6 +158,35 @@ public sealed partial class WorkspacesViewModel : PageViewModelBase
         }
 
         ActiveWorkspace = _workspaceContext.SelectedWorkspace;
+        RebuildFiltered();
+    }
+
+    private void RebuildFiltered()
+    {
+        var q = SearchQuery.Trim();
+        var activeId = ActiveWorkspace?.Id;
+        var activeDocCount = _workspaceContext.Documents.Count;
+
+        FilteredWorkspaces.Clear();
+        foreach (var ws in Workspaces)
+        {
+            var isActive = activeId == ws.Id;
+            if (ShowCurrentOnly && !isActive)
+            {
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(q) &&
+                !ws.Name.Contains(q, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var subtitle = isActive
+                ? $"현재 활성 워크스페이스 · 문서 {activeDocCount}개"
+                : "워크스페이스";
+            FilteredWorkspaces.Add(new WorkspaceRowViewModel(ws, isActive, subtitle));
+        }
     }
 
     private async Task RunGuardedAsync(Func<Task> action)

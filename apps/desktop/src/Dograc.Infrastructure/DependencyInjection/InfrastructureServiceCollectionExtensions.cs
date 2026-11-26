@@ -1,7 +1,9 @@
+using Dograc.Core.Errors;
 using Dograc.Core.Models;
 using Dograc.Core.Navigation;
 using Dograc.Core.Services;
 using Dograc.Infrastructure.Api;
+using Dograc.Infrastructure.Diagnostics;
 using Dograc.Infrastructure.Navigation;
 using Dograc.Infrastructure.Services;
 using Dograc.Infrastructure.Settings;
@@ -11,13 +13,16 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Dograc.Infrastructure.DependencyInjection;
 
 /// <summary>
-/// Registers infrastructure services for the dograc desktop client.
+/// Registers infrastructure, diagnostics, logging, and error-mapping services for dograc Desktop.
 /// </summary>
 public static class InfrastructureServiceCollectionExtensions
 {
     public static IServiceCollection AddDogracInfrastructure(this IServiceCollection services)
     {
         services.AddHttpClient("HealthProbe");
+
+        services.AddSingleton<IStructuredLogger, StructuredFileLogger>();
+        services.AddSingleton<IErrorMapper, ErrorMapper>();
 
         services.AddSingleton(_ => new ServiceRuntimeOptions(
             ProjectRoot: ProjectRootResolver.ResolveProjectRoot()));
@@ -46,6 +51,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IServiceManager, LocalServiceManager>();
         services.AddSingleton<IStartupOrchestrator, StartupOrchestrator>();
         services.AddSingleton<IWorkspaceContext, WorkspaceContext>();
+        services.AddSingleton<IDiagnosticService, DiagnosticService>();
 
         return services;
     }

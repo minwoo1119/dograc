@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import status
 
 from app.core.errors import ApplicationError
@@ -14,15 +16,24 @@ class DocumentUploadValidationError(ApplicationError):
             code=error.code,
             message=error.message,
             status_code=status_code,
+            stage="upload",
         )
 
 
 class DocumentProcessingError(ApplicationError):
-    def __init__(self, message: str = "문서를 저장하거나 색인하는 과정에서 오류가 발생했습니다.") -> None:
+    def __init__(
+        self,
+        message: str = "문서를 저장하거나 색인하는 과정에서 오류가 발생했습니다.",
+        *,
+        stage: str | None = None,
+        details: Any | None = None,
+    ) -> None:
         super().__init__(
             code="DOCUMENT_PROCESSING_FAILED",
             message=message,
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            stage=stage,
+            details=details,
         )
 
 
@@ -36,9 +47,17 @@ class DocumentNotFoundError(ApplicationError):
 
 
 class DocumentParseFailedError(ApplicationError):
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        message: str = "The document could not be parsed.",
+        *,
+        stage: str = "text_extraction",
+        details: Any | None = None,
+    ) -> None:
         super().__init__(
             code="DOCUMENT_PARSE_FAILED",
-            message="The document could not be parsed.",
+            message=message,
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            stage=stage,
+            details=details,
         )

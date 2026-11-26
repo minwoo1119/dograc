@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text.Json;
+using Dograc.Core.Errors;
 using Dograc.Core.Models;
 using Dograc.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,7 +12,7 @@ namespace Dograc.Infrastructure.Services;
 
 /// <summary>
 /// Checks Velopack (installed package) or GitHub Releases API (dev/portable fallback)
-/// for dograc Desktop updates and supports one-click download & restart installation.
+/// for dograc Desktop updates and supports one-click download & restart installation with safe rollback messaging.
 /// </summary>
 public sealed class GitHubUpdateService : IUpdateService
 {
@@ -21,18 +22,24 @@ public sealed class GitHubUpdateService : IUpdateService
     public const string ReleasesPageUrl = "https://github.com/minwoo1119/dograc/releases/latest";
 
     private readonly HttpClient _httpClient;
+    private readonly IStructuredLogger? _logger;
     private readonly UpdateManager? _velopackManager;
     private UpdateInfo? _pendingUpdate;
 
     [ActivatorUtilitiesConstructor]
-    public GitHubUpdateService(HttpClient httpClient)
-        : this(httpClient, ResolveAssemblyVersion(), enableVelopack: true)
+    public GitHubUpdateService(HttpClient httpClient, IStructuredLogger? logger = null)
+        : this(httpClient, ResolveAssemblyVersion(), enableVelopack: true, logger)
     {
     }
 
-    public GitHubUpdateService(HttpClient httpClient, string currentVersion, bool enableVelopack = false)
+    public GitHubUpdateService(
+        HttpClient httpClient,
+        string currentVersion,
+        bool enableVelopack = false,
+        IStructuredLogger? logger = null)
     {
         _httpClient = httpClient;
+        _logger = logger;
         CurrentVersion = string.IsNullOrWhiteSpace(currentVersion) ? DefaultCurrentVersion : currentVersion;
 
         if (enableVelopack)
@@ -50,9 +57,10 @@ public sealed class GitHubUpdateService : IUpdateService
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Unpackaged / dev execution — fall back cleanly to GitHub Releases API.
+                _logger?.LogInfo("Updates", "Updates", "InitVelopack",
+                    $"포터블/개발 실행 모드로 감지되어 GitHub Releases API 폴백을 사용합니다 ({ex.GetType().Name}).");
                 _velopackManager = null;
             }
         }
@@ -64,7 +72,6 @@ public sealed class GitHubUpdateService : IUpdateService
 
     public async Task<UpdateCheckResult> CheckForUpdatesAsync(CancellationToken cancellationToken = default)
     {
-        // 1. Installed Velopack package: check delta/full release feed directly.
         if (_velopackManager is not null && _velopackManager.IsInstalled)
         {
             try
@@ -104,13 +111,13 @@ public sealed class GitHubUpdateService : IUpdateService
             {
                 throw;
             }
-            catch
+            catch (Exception ex)
             {
-                // Fall back to GitHub Releases API when Velopack feed check fails.
+                _logger?.LogWarning("Updates", "Updates", "VelopackCheck",
+                    $"Velopack 피드 확인 실패로 GitHub Releases API로 폴백합니다: {ex.Message}", errorCode: "UPD-001");
             }
         }
 
-        // 2. Fallback: GitHub Releases API (dev / portable / air-gapped safe)
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, ReleasesApiUrl);
@@ -120,6 +127,9 @@ public sealed class GitHubUpdateService : IUpdateService
             using var response = await _httpClient.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
+                var code = (int)response.StatusCode;
+                _logger?.LogWarning("Updates", "Updates", "CheckForUpdates",
+                    $"GitHub Releases API 응답 오류 (HTTP {code})", errorCode: "UPD-001");
                 return new UpdateCheckResult(
                     false,
                     CurrentVersion,
@@ -127,7 +137,7 @@ public sealed class GitHubUpdateService : IUpdateService
                     string.Empty,
                     ReleasesPageUrl,
                     null,
-                    $"업데이트 서버 응답 코드: {(int)response.StatusCode}",
+                    $"[UPD-001] 업데이트 서버 응답 오류(HTTP {code}). 현재 버전(v{CurrentVersion})은 정상 사용 가능합니다.",
                     CanAutoInstall: false);
             }
 
@@ -177,24 +187,23 @@ public sealed class GitHubUpdateService : IUpdateService
                     "현재 최신 버전을 사용하고 있습니다.",
                     CanAutoInstall: false);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }
-        catch (HttpRequestException)
+        catch (OperationCanceledException)
         {
+            _logger?.LogWarning("Updates", "Updates", "CheckForUpdates",
+                "업데이트 서버 응답 시간 초과", errorCode: "UPD-001");
             return new UpdateCheckResult(
-                false,
-                CurrentVersion,
-                CurrentVersion,
-                string.Empty,
-                ReleasesPageUrl,
-                null,
-                "오프라인 폐쇄망 환경이거나 GitHub 연결에 실패했습니다.",
+                false, CurrentVersion, CurrentVersion, string.Empty, ReleasesPageUrl, null,
+                $"[UPD-001] 업데이트 서버 응답 시간이 초과되었습니다. 현재 버전(v{CurrentVersion})은 정상 사용 가능합니다.",
                 CanAutoInstall: false);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
+            _logger?.LogWarning("Updates", "Updates", "CheckForUpdates",
+                $"업데이트 서버 연결 불가(오프라인 가능): {ex.Message}", errorCode: "UPD-001");
             return new UpdateCheckResult(
                 false,
                 CurrentVersion,
@@ -202,7 +211,16 @@ public sealed class GitHubUpdateService : IUpdateService
                 string.Empty,
                 ReleasesPageUrl,
                 null,
-                $"업데이트 확인 중 오류: {ex.Message}",
+                $"[UPD-001] 오프라인 폐쇄망 환경이거나 GitHub에 연결할 수 없습니다. 현재 버전(v{CurrentVersion})은 정상 사용 가능합니다.",
+                CanAutoInstall: false);
+        }
+        catch (JsonException ex)
+        {
+            _logger?.LogWarning("Updates", "Updates", "CheckForUpdates",
+                $"업데이트 응답 JSON 파싱 실패: {ex.Message}", errorCode: "UPD-001");
+            return new UpdateCheckResult(
+                false, CurrentVersion, CurrentVersion, string.Empty, ReleasesPageUrl, null,
+                $"[UPD-001] 릴리스 응답 형식을 해석하지 못했습니다. 현재 버전(v{CurrentVersion})은 정상 유지됩니다.",
                 CanAutoInstall: false);
         }
     }
@@ -211,21 +229,79 @@ public sealed class GitHubUpdateService : IUpdateService
     {
         if (_velopackManager is null || !_velopackManager.IsInstalled)
         {
-            throw new InvalidOperationException("포터블/개발 실행 모드에서는 자동 설치가 지원되지 않습니다. Setup.exe 설치 버전을 사용해 주세요.");
+            throw new DogracApplicationException(new ApplicationError(
+                ErrorCode: "UPD-003",
+                Severity: ErrorSeverity.Warning,
+                Category: ErrorCategory.UpdateInstall,
+                Title: "현재 실행 모드에서는 자동 업데이트를 적용할 수 없습니다",
+                Description: "포터블(ZIP) 또는 개발 실행 모드에서는 원클릭 자동 교체가 지원되지 않습니다.",
+                Cause: "Velopack 설치 프로그램(Setup.exe)으로 설치된 환경이 아닙니다.",
+                IsConfirmedCause: true,
+                Impact: $"기존 실행 파일(v{CurrentVersion})은 변경 없이 안전하게 유지됩니다.",
+                Resolution: "GitHub Releases 페이지에서 최신 dograc-win-Setup.exe 또는 Portable ZIP을 받아 주세요.",
+                RecoveryActions:
+                [
+                    new(RecoveryActionKind.OpenReleasePage, "릴리스 페이지 열기", IsPrimary: true)
+                ],
+                TechnicalDetails: $"CurrentVersion={CurrentVersion} | IsInstalled=false",
+                Timestamp: DateTimeOffset.Now,
+                CorrelationId: Guid.NewGuid().ToString("N")[..12],
+                Context: new ErrorContext("Updates", "Updates", "DownloadAndApplyUpdate")));
         }
 
-        _pendingUpdate ??= await _velopackManager.CheckForUpdatesAsync();
-        if (_pendingUpdate is null)
+        try
         {
-            throw new InvalidOperationException("설치할 새 업데이트가 없습니다.");
+            _pendingUpdate ??= await _velopackManager.CheckForUpdatesAsync();
+            if (_pendingUpdate is null)
+            {
+                throw new InvalidOperationException("설치할 새 업데이트가 없습니다.");
+            }
+
+            await _velopackManager.DownloadUpdatesAsync(
+                _pendingUpdate,
+                percent => progress?.Report(Math.Clamp(percent, 0, 100)),
+                cancellationToken);
+
+            _velopackManager.ApplyUpdatesAndRestart(_pendingUpdate);
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (DogracApplicationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var isPermissionOrLock = ex is UnauthorizedAccessException || ex is IOException;
+            var err = new ApplicationError(
+                ErrorCode: isPermissionOrLock ? "UPD-003" : "UPD-002",
+                Severity: ErrorSeverity.Error,
+                Category: ErrorCategory.UpdateInstall,
+                Title: isPermissionOrLock ? "업데이트 설치 권한 또는 파일 잠금 오류" : "업데이트 파일 다운로드/검증에 실패했습니다",
+                Description: "새 버전 패키지를 내려받거나 적용하는 도중 오류가 발생했습니다.",
+                Cause: isPermissionOrLock
+                    ? "설치 폴더 쓰기 권한이 부족하거나 다른 프로세스가 파일을 사용 중일 수 있습니다."
+                    : "다운로드 중 네트워크가 끊어졌거나 파일 무결성 검증에 실패했을 수 있습니다.",
+                IsConfirmedCause: false,
+                Impact: $"기존 설치 버전(v{CurrentVersion})은 손상 없이 그대로 유지됩니다.",
+                Resolution: "잠시 후 [다시 시도]를 누르거나, GitHub Releases에서 수동 설치기를 내려받아 주세요.",
+                RecoveryActions:
+                [
+                    new(RecoveryActionKind.Retry, "다시 시도", IsPrimary: true),
+                    new(RecoveryActionKind.OpenReleasePage, "릴리스 페이지 열기"),
+                    new(RecoveryActionKind.CopyDiagnostics, "진단 정보 복사")
+                ],
+                TechnicalDetails: $"CurrentVersion={CurrentVersion} | Exception={ex.GetType().Name}: {ex.Message}",
+                Timestamp: DateTimeOffset.Now,
+                CorrelationId: Guid.NewGuid().ToString("N")[..12],
+                Context: new ErrorContext("Updates", "Updates", "DownloadAndApplyUpdate"),
+                IsRetryable: true);
 
-        await _velopackManager.DownloadUpdatesAsync(
-            _pendingUpdate,
-            percent => progress?.Report(Math.Clamp(percent, 0, 100)),
-            cancellationToken);
-
-        _velopackManager.ApplyUpdatesAndRestart(_pendingUpdate);
+            _logger?.LogError(err, ex);
+            throw new DogracApplicationException(err, ex);
+        }
     }
 
     public static int CompareVersions(string left, string right)

@@ -3,11 +3,13 @@ namespace Dograc.Core.Models;
 /// <summary>
 /// Normalized document citation parsed from [FileName, p.Number].
 /// </summary>
-public sealed record CitationReference(string FileName, int PageNumber)
+public sealed record CitationReference(string FileName, int PageNumber, int Index = 0)
 {
     public string DisplayPage => $"p.{PageNumber}";
 
     public string DisplayLabel => $"{FileName}, {DisplayPage}";
+
+    public string NumberBadge => Index > 0 ? $"[{Index}]" : $"[{DisplayLabel}]";
 }
 
 /// <summary>

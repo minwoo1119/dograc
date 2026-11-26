@@ -10,7 +10,8 @@ using Dograc.Core.Parsing;
 namespace Dograc.App.Controls;
 
 /// <summary>
-/// Reading-First WPF Markdown renderer with dynamic KDS theme brushes and clickable inline [FileName, p.N] citation badges.
+/// Editorial reading-first WPF Markdown renderer matching design/DESIGN.md typography
+/// (15px body, 25px line-height) and compact numbered superscript citations ([1], [2], ...).
 /// </summary>
 public sealed partial class MarkdownFlowControl : RichTextBox
 {
@@ -40,6 +41,8 @@ public sealed partial class MarkdownFlowControl : RichTextBox
 
     [GeneratedRegex(@"^\d+\.\s+(.+)$", RegexOptions.Compiled)]
     private static partial Regex OrderedListRegex();
+
+    private IReadOnlyDictionary<string, int>? _citationNumberMap;
 
     public MarkdownFlowControl()
     {
@@ -87,13 +90,14 @@ public sealed partial class MarkdownFlowControl : RichTextBox
         var doc = new FlowDocument
         {
             PagePadding = new Thickness(0),
-            FontSize = 13.5,
-            LineHeight = 22
+            FontSize = 15,
+            LineHeight = 25
         };
         doc.SetResourceReference(FlowDocument.FontFamilyProperty, "Font.Primary");
         doc.SetResourceReference(FlowDocument.ForegroundProperty, "Brush.TextPrimary");
 
         var text = (MarkdownText ?? string.Empty).Replace("\r\n", "\n");
+        _citationNumberMap = EnableCitations ? CitationParser.BuildCitationNumberMap(text) : null;
         var lines = text.Split('\n');
 
         var i = 0;
@@ -127,22 +131,22 @@ public sealed partial class MarkdownFlowControl : RichTextBox
                 continue;
             }
 
-            // Headings
+            // Headings (h2=20px, h3=16px per design/DESIGN.md)
             if (line.StartsWith("### ", StringComparison.Ordinal))
             {
-                doc.Blocks.Add(BuildHeading(line[4..], 14));
+                doc.Blocks.Add(BuildHeading(line[4..], 16, new Thickness(0, 16, 0, 6)));
                 i++;
                 continue;
             }
             if (line.StartsWith("## ", StringComparison.Ordinal))
             {
-                doc.Blocks.Add(BuildHeading(line[3..], 15));
+                doc.Blocks.Add(BuildHeading(line[3..], 20, new Thickness(0, 20, 0, 10)));
                 i++;
                 continue;
             }
             if (line.StartsWith("# ", StringComparison.Ordinal))
             {
-                doc.Blocks.Add(BuildHeading(line[2..], 16.5));
+                doc.Blocks.Add(BuildHeading(line[2..], 22, new Thickness(0, 20, 0, 10)));
                 i++;
                 continue;
             }
@@ -164,11 +168,16 @@ public sealed partial class MarkdownFlowControl : RichTextBox
             // Unordered list
             if (IsBulletLine(line))
             {
-                var list = new List { MarkerStyle = TextMarkerStyle.Disc, Margin = new Thickness(16, 4, 0, 8), Padding = new Thickness(6, 0, 0, 0) };
+                var list = new List
+                {
+                    MarkerStyle = TextMarkerStyle.Disc,
+                    Margin = new Thickness(18, 4, 0, 12),
+                    Padding = new Thickness(6, 0, 0, 0)
+                };
                 while (i < lines.Length && IsBulletLine(lines[i]))
                 {
                     var itemText = lines[i].TrimStart()[2..];
-                    var para = CreateBodyParagraph(new Thickness(0, 0, 0, 3));
+                    var para = CreateBodyParagraph(new Thickness(0, 0, 0, 6));
                     AppendFormattedInlines(para.Inlines, itemText);
                     list.ListItems.Add(new ListItem(para));
                     i++;
@@ -181,7 +190,12 @@ public sealed partial class MarkdownFlowControl : RichTextBox
             // Ordered list
             if (OrderedListRegex().IsMatch(line.TrimStart()))
             {
-                var list = new List { MarkerStyle = TextMarkerStyle.Decimal, Margin = new Thickness(18, 4, 0, 8), Padding = new Thickness(6, 0, 0, 0) };
+                var list = new List
+                {
+                    MarkerStyle = TextMarkerStyle.Decimal,
+                    Margin = new Thickness(20, 4, 0, 12),
+                    Padding = new Thickness(6, 0, 0, 0)
+                };
                 while (i < lines.Length)
                 {
                     var match = OrderedListRegex().Match(lines[i].TrimStart());
@@ -190,7 +204,7 @@ public sealed partial class MarkdownFlowControl : RichTextBox
                         break;
                     }
 
-                    var para = CreateBodyParagraph(new Thickness(0, 0, 0, 3));
+                    var para = CreateBodyParagraph(new Thickness(0, 0, 0, 6));
                     AppendFormattedInlines(para.Inlines, match.Groups[1].Value);
                     list.ListItems.Add(new ListItem(para));
                     i++;
@@ -200,7 +214,7 @@ public sealed partial class MarkdownFlowControl : RichTextBox
                 continue;
             }
 
-            // Standard paragraph (collect consecutive non-special lines)
+            // Standard paragraph
             var paragraphLines = new List<string>();
             while (i < lines.Length &&
                    !string.IsNullOrWhiteSpace(lines[i]) &&
@@ -214,7 +228,7 @@ public sealed partial class MarkdownFlowControl : RichTextBox
                 i++;
             }
 
-            var bodyPara = CreateBodyParagraph(new Thickness(0, 0, 0, 8));
+            var bodyPara = CreateBodyParagraph(new Thickness(0, 0, 0, 12));
             for (var pIdx = 0; pIdx < paragraphLines.Count; pIdx++)
             {
                 if (pIdx > 0)
@@ -228,6 +242,11 @@ public sealed partial class MarkdownFlowControl : RichTextBox
             doc.Blocks.Add(bodyPara);
         }
 
+        if (doc.Blocks.FirstBlock is Block firstBlock)
+        {
+            firstBlock.Margin = new Thickness(firstBlock.Margin.Left, 0, firstBlock.Margin.Right, firstBlock.Margin.Bottom);
+        }
+
         if (doc.Blocks.LastBlock is Block lastBlock)
         {
             lastBlock.Margin = new Thickness(lastBlock.Margin.Left, lastBlock.Margin.Top, lastBlock.Margin.Right, 0);
@@ -236,13 +255,14 @@ public sealed partial class MarkdownFlowControl : RichTextBox
         Document = doc;
     }
 
-    private Paragraph BuildHeading(string text, double fontSize)
+    private Paragraph BuildHeading(string text, double fontSize, Thickness margin)
     {
         var para = new Paragraph
         {
             FontSize = fontSize,
             FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(0, 8, 0, 4)
+            LineHeight = fontSize + 8,
+            Margin = margin
         };
         para.SetResourceReference(TextElement.ForegroundProperty, "Brush.TextPrimary");
         AppendFormattedInlines(para.Inlines, text);
@@ -252,18 +272,17 @@ public sealed partial class MarkdownFlowControl : RichTextBox
     private Block BuildBlockquote(string text)
     {
         var para = CreateBodyParagraph(new Thickness(0));
-        para.FontStyle = FontStyles.Italic;
         para.SetResourceReference(TextElement.ForegroundProperty, "Brush.TextSecondary");
         AppendFormattedInlines(para.Inlines, text);
 
         var section = new Section
         {
             BorderThickness = new Thickness(2, 0, 0, 0),
-            Padding = new Thickness(10, 4, 8, 4),
-            Margin = new Thickness(0, 4, 0, 8)
+            Padding = new Thickness(12, 4, 8, 4),
+            Margin = new Thickness(0, 4, 0, 12)
         };
-        section.SetResourceReference(Block.BorderBrushProperty, "Brush.Primary");
-        section.SetResourceReference(Block.BackgroundProperty, "Brush.SurfaceSubtle");
+        section.SetResourceReference(Block.BorderBrushProperty, "Brush.Accent");
+        section.SetResourceReference(Block.BackgroundProperty, "Brush.Side");
         section.Blocks.Add(para);
         return section;
     }
@@ -272,22 +291,26 @@ public sealed partial class MarkdownFlowControl : RichTextBox
     {
         var para = new Paragraph(new Run(code))
         {
-            Margin = new Thickness(0, 4, 0, 8),
-            Padding = new Thickness(10, 8, 10, 8),
+            Margin = new Thickness(0, 6, 0, 14),
+            Padding = new Thickness(14, 12, 14, 12),
             BorderThickness = new Thickness(1),
-            FontSize = 12,
-            LineHeight = 18
+            FontSize = 12.5,
+            LineHeight = 19
         };
         para.SetResourceReference(TextElement.FontFamilyProperty, "Font.Mono");
         para.SetResourceReference(TextElement.ForegroundProperty, "Brush.TextPrimary");
-        para.SetResourceReference(Block.BackgroundProperty, "Brush.SurfaceSubtle");
+        para.SetResourceReference(Block.BackgroundProperty, "Brush.Side");
         para.SetResourceReference(Block.BorderBrushProperty, "Brush.Border");
         return para;
     }
 
     private static Paragraph CreateBodyParagraph(Thickness margin)
     {
-        var para = new Paragraph { Margin = margin };
+        var para = new Paragraph
+        {
+            Margin = margin,
+            LineHeight = 25
+        };
         para.SetResourceReference(TextElement.ForegroundProperty, "Brush.TextPrimary");
         return para;
     }
@@ -319,11 +342,11 @@ public sealed partial class MarkdownFlowControl : RichTextBox
             {
                 var codeRun = new Run($" {token[1..^1]} ")
                 {
-                    FontSize = 12
+                    FontSize = 12.5
                 };
                 codeRun.SetResourceReference(TextElement.FontFamilyProperty, "Font.Mono");
-                codeRun.SetResourceReference(TextElement.ForegroundProperty, "Brush.Primary");
-                codeRun.SetResourceReference(TextElement.BackgroundProperty, "Brush.SurfaceSubtle");
+                codeRun.SetResourceReference(TextElement.ForegroundProperty, "Brush.Accent");
+                codeRun.SetResourceReference(TextElement.BackgroundProperty, "Brush.SurfaceTone");
                 target.Add(codeRun);
             }
             else
@@ -348,7 +371,7 @@ public sealed partial class MarkdownFlowControl : RichTextBox
             return;
         }
 
-        foreach (var segment in CitationParser.SplitTextWithCitations(text))
+        foreach (var segment in CitationParser.SplitTextWithCitations(text, _citationNumberMap))
         {
             if (!segment.IsCitation || segment.Citation is null)
             {
@@ -356,44 +379,30 @@ public sealed partial class MarkdownFlowControl : RichTextBox
                 continue;
             }
 
-            target.Add(CreateCitationBadge(segment.Citation));
+            target.Add(CreateSuperscriptCitationLink(segment.Citation));
         }
     }
 
-    private InlineUIContainer CreateCitationBadge(CitationReference citation)
+    private InlineUIContainer CreateSuperscriptCitationLink(CitationReference citation)
     {
-        var label = new TextBlock
-        {
-            Text = citation.DisplayLabel,
-            FontSize = 11,
-            FontWeight = FontWeights.SemiBold
-        };
-        label.SetResourceReference(TextBlock.ForegroundProperty, "Brush.Primary");
-
-        var badgeBorder = new Border
-        {
-            CornerRadius = new CornerRadius(4),
-            BorderThickness = new Thickness(1),
-            Padding = new Thickness(6, 1, 6, 1),
-            Child = label
-        };
-        badgeBorder.SetResourceReference(Border.BackgroundProperty, "Brush.PrimarySubtle");
-        badgeBorder.SetResourceReference(Border.BorderBrushProperty, "Brush.PrimaryBorder");
-
         var button = new Button
         {
-            Content = badgeBorder,
-            Background = Brushes.Transparent,
-            BorderThickness = new Thickness(0),
-            Padding = new Thickness(0),
-            Margin = new Thickness(2, 0, 2, 0),
+            Content = citation.NumberBadge,
+            FontSize = 11,
+            FontWeight = FontWeights.SemiBold,
+            Padding = new Thickness(3, 0, 3, 0),
+            Margin = new Thickness(1, 0, 2, 0),
             Cursor = Cursors.Hand,
             ToolTip = $"{citation.DisplayLabel} — 클릭하여 답변 근거 확인",
             Command = CitationClickedCommand,
             CommandParameter = citation
         };
+        button.SetResourceReference(FrameworkElement.StyleProperty, "Button.Link");
 
-        return new InlineUIContainer(button) { BaselineAlignment = BaselineAlignment.Center };
+        return new InlineUIContainer(button)
+        {
+            BaselineAlignment = BaselineAlignment.Top
+        };
     }
 
     private static bool IsBulletLine(string line)

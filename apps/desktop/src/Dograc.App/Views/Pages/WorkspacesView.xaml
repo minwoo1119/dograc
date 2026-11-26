@@ -1,112 +1,153 @@
 <UserControl x:Class="Dograc.App.Views.Pages.WorkspacesView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{DynamicResource Brush.Canvas}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid MaxWidth="1200" HorizontalAlignment="Stretch" Margin="32,28,32,32">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Margin="0,0,0,14">
-            <StackPanel>
-                <TextBlock Text="{Binding PageTitle}" Style="{StaticResource Text.TitleM}" />
-                <TextBlock Text="{Binding PageDescription}" Style="{StaticResource Text.Caption}" Margin="0,4,0,0" />
+            <FrameworkElement x:Name="WorkspacesPageProxy" Visibility="Collapsed" />
+
+            <!-- Page Header -->
+            <StackPanel Grid.Row="0">
+                <TextBlock Text="Workspaces" Style="{StaticResource Text.PageTitle}" />
+                <TextBlock Text="프로젝트별 문서와 대화를 독립적으로 관리합니다."
+                           Style="{StaticResource Text.Caption}"
+                           FontSize="13"
+                           Margin="0,6,0,0" />
             </StackPanel>
-            <Button Content="새로고침"
-                    Style="{StaticResource Button.Secondary}"
-                    Command="{Binding RefreshCommand}"
-                    IsEnabled="{Binding IsNotBusy}"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center" />
-        </Grid>
 
-        <!-- Create Workspace Bar -->
-        <Border Grid.Row="1"
-                Background="{DynamicResource Brush.Surface}"
-                BorderBrush="{DynamicResource Brush.Border}"
-                BorderThickness="{StaticResource Border.Hairline}"
-                CornerRadius="{StaticResource Radius.Medium}"
-                Padding="12"
-                Margin="0,0,0,12">
-            <Grid>
+            <!-- Action Toolbar -->
+            <Grid Grid.Row="1" Margin="0,22,0,18">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
+
                 <TextBox Grid.Column="0"
                          Style="{StaticResource Input.Hairline}"
-                         Text="{Binding NewWorkspaceName, UpdateSourceTrigger=PropertyChanged}"
-                         ToolTip="새 워크스페이스 이름 (예: 2026 사내 규정)"
-                         Margin="0,0,8,0" />
-                <Button Grid.Column="1"
-                        Content="+ 새 워크스페이스 만들기"
-                        Style="{StaticResource Button.Primary}"
-                        Command="{Binding CreateWorkspaceCommand}"
-                        IsEnabled="{Binding IsNotBusy}" />
+                         Width="280"
+                         Height="36"
+                         Tag="워크스페이스 검색..."
+                         Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}" />
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button Style="{StaticResource Button.Secondary}"
+                            Content="새로고침"
+                            IsEnabled="{Binding IsNotBusy}"
+                            Command="{Binding RefreshCommand}" />
+                    <Button Style="{StaticResource Button.Primary}"
+                            Content="+ 새 워크스페이스"
+                            Margin="8,0,0,0"
+                            IsEnabled="{Binding IsNotBusy}"
+                            Command="{Binding RequestNewWorkspaceDialogCommand}" />
+                </StackPanel>
             </Grid>
-        </Border>
 
-        <!-- Feedback / Error Banner -->
-        <StackPanel Grid.Row="2" Margin="0,0,0,10">
-            <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource Text.Caption}" />
-            <Border Visibility="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyToVisibility}}"
-                    Background="{DynamicResource Brush.DangerSubtle}"
-                    BorderBrush="{DynamicResource Brush.Danger}"
-                    BorderThickness="{StaticResource Border.Hairline}"
-                    CornerRadius="{StaticResource Radius.Small}"
-                    Padding="10,6"
-                    Margin="0,6,0,0">
-                <TextBlock Text="{Binding ErrorMessage}"
-                           FontSize="12"
-                           Foreground="{DynamicResource Brush.Danger}"
-                           TextWrapping="Wrap" />
+            <!-- Flat Hairline Workspace Rows -->
+            <Border Grid.Row="2"
+                    BorderBrush="{DynamicResource Brush.Border}"
+                    BorderThickness="0,1,0,0">
+                <ItemsControl ItemsSource="{Binding FilteredWorkspaces}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="{DynamicResource Brush.Border}"
+                                    BorderThickness="0,0,0,1"
+                                    Padding="10,16">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Hover}" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}"
+                                                   FontSize="14.5"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Brush.TextPrimary}" />
+                                        <TextBlock Text="{Binding Subtitle}"
+                                                   FontSize="12.5"
+                                                   Foreground="{DynamicResource Brush.TextMuted}"
+                                                   Margin="0,4,0,0" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal"
+                                                    VerticalAlignment="Center"
+                                                    Margin="0,0,12,0"
+                                                    Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
+                                            <Ellipse Width="7" Height="7"
+                                                     Fill="{DynamicResource Brush.Success}"
+                                                     Margin="0,0,6,0" />
+                                            <TextBlock Text="사용 중"
+                                                       FontSize="12.5"
+                                                       FontWeight="Medium"
+                                                       Foreground="{DynamicResource Brush.Success}" />
+                                        </StackPanel>
+
+                                        <Button Style="{StaticResource Button.Secondary}"
+                                                Height="32"
+                                                Padding="14,0"
+                                                Margin="0,0,8,0"
+                                                Content="선택"
+                                                Visibility="{Binding IsNotActive, Converter={StaticResource BoolToVisibility}}"
+                                                Command="{Binding DataContext.SelectWorkspaceCommand, Source={x:Reference WorkspacesPageProxy}}"
+                                                CommandParameter="{Binding}" />
+
+                                        <Button Style="{StaticResource Button.IconGhost}"
+                                                Width="28" Height="28"
+                                                Click="OnOverflowButtonClick"
+                                                ToolTip="워크스페이스 작업">
+                                            <Button.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="활성 워크스페이스로 선택"
+                                                              Command="{Binding DataContext.SelectWorkspaceCommand, Source={x:Reference WorkspacesPageProxy}}"
+                                                              CommandParameter="{Binding}" />
+                                                    <MenuItem Header="삭제"
+                                                              Command="{Binding DataContext.DeleteWorkspaceCommand, Source={x:Reference WorkspacesPageProxy}}"
+                                                              CommandParameter="{Binding}" />
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
+                                            <Viewbox Width="15" Height="15">
+                                                <Path Data="{StaticResource Icon.More}"
+                                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                      StrokeThickness="2"
+                                                      StrokeStartLineCap="Round"
+                                                      Width="24" Height="24" />
+                                            </Viewbox>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </Border>
-        </StackPanel>
 
-        <!-- Workspace List -->
-        <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding Workspaces}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Background="{DynamicResource Brush.Surface}"
-                                BorderBrush="{DynamicResource Brush.Border}"
-                                BorderThickness="{StaticResource Border.Hairline}"
-                                CornerRadius="{StaticResource Radius.Medium}"
-                                Padding="14,12"
-                                Margin="0,0,0,8">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Name}" Style="{StaticResource Text.TitleS}" />
-                                    <TextBlock Text="{Binding CreatedAt, StringFormat='생성일: {0:yyyy-MM-dd HH:mm}'}"
-                                               Style="{StaticResource Text.Caption}"
-                                               Margin="0,3,0,0" />
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Button Content="선택"
-                                            Style="{StaticResource Button.Primary}"
-                                            Command="{Binding DataContext.SelectWorkspaceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}"
-                                            Padding="12,5"
-                                            Margin="0,0,6,0" />
-                                    <Button Content="삭제"
-                                            Style="{StaticResource Button.Secondary}"
-                                            Command="{Binding DataContext.DeleteWorkspaceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}"
-                                            Padding="10,5" />
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
-    </Grid>
+            <!-- Error Message -->
+            <TextBlock Grid.Row="3"
+                       Text="{Binding ErrorMessage}"
+                       Visibility="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyToVisibility}}"
+                       FontSize="12.5"
+                       Foreground="{DynamicResource Brush.Error}"
+                       Margin="0,12,0,0" />
+        </Grid>
+    </ScrollViewer>
 </UserControl>

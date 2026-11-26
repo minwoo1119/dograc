@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="apps/desktop/src/Dograc.App/Assets/dograc.png" width="84" height="84" alt="dograc icon" />
+
 # dograc
 
 **사내 기밀 정보 보호를 위한 로컬 오픈소스 모델 기반 통합 WPF AI 리서치 워크스페이스**

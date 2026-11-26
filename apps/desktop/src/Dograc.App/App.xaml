@@ -8,14 +8,18 @@
                 <ResourceDictionary Source="Themes/Tokens/Colors.Light.xaml" />
                 <ResourceDictionary Source="Themes/Tokens/Typography.xaml" />
                 <ResourceDictionary Source="Themes/Tokens/SpacingAndBorders.xaml" />
+                <ResourceDictionary Source="Themes/Tokens/Icons.xaml" />
                 <ResourceDictionary Source="Themes/Styles/Controls.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
             <converters:BoolToVisibilityConverter x:Key="InverseBoolToVisibility" Invert="True" />
             <converters:EnumEqualsConverter x:Key="EnumEquals" />
+            <converters:StringEqualsConverter x:Key="StringEquals" />
             <converters:MultiEqualityConverter x:Key="MultiEquality" />
             <converters:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibility" />
+            <converters:NullToVisibilityConverter x:Key="NullToVisibility" />
+            <converters:ResourceKeyToGeometryConverter x:Key="IconKeyToGeometry" />
             <converters:ServiceStateToBrushConverter x:Key="ServiceStateToBrush" />
             <converters:DocumentStatusToBrushConverter x:Key="DocumentStatusToBrush" />
         </ResourceDictionary>

@@ -3,20 +3,36 @@ using System.Text.Json.Serialization;
 namespace Dograc.Core.Models;
 
 /// <summary>
-/// Exception representing a structured FastAPI error response.
+/// Exception representing a structured FastAPI error response with correlation and pipeline stage metadata.
 /// </summary>
 public sealed class ApiException : Exception
 {
-    public ApiException(int statusCode, string message, string? errorCode = null, Exception? innerException = null)
+    public ApiException(
+        int statusCode,
+        string message,
+        string? errorCode = null,
+        Exception? innerException = null,
+        string? correlationId = null,
+        string? pipelineStage = null,
+        string? rawDetails = null)
         : base(message, innerException)
     {
         StatusCode = statusCode;
         ErrorCode = errorCode;
+        CorrelationId = correlationId;
+        PipelineStage = pipelineStage;
+        RawDetails = rawDetails;
     }
 
     public int StatusCode { get; }
 
     public string? ErrorCode { get; }
+
+    public string? CorrelationId { get; }
+
+    public string? PipelineStage { get; }
+
+    public string? RawDetails { get; }
 }
 
 public sealed record WorkspaceDto(
@@ -41,8 +57,23 @@ public sealed record DocumentDto(
         "ready" => "색인 완료",
         "processing" => "처리 중",
         "uploaded" => "대기 중",
-        "failed" => "실패",
+        "failed" => string.IsNullOrWhiteSpace(FailureStageLabel) ? "실패" : $"실패 ({FailureStageLabel})",
         _ => Status
+    };
+
+    [JsonIgnore]
+    public string? FailureStageLabel => FailureCode?.ToUpperInvariant() switch
+    {
+        "STORAGE_READ_FAILED" => "파일 읽기",
+        "DOCUMENT_ENCRYPTED_PDF" => "암호화 PDF",
+        "DOCUMENT_EMPTY_TEXT" => "빈 문서/스캔 PDF",
+        "DOCUMENT_PARSE_FAILED" or "PARSE_ERROR" => "텍스트 추출",
+        "DOCUMENT_CHUNKING_FAILED" => "Chunking",
+        "DOCUMENT_EMBEDDING_FAILED" => "Embedding",
+        "DOCUMENT_VECTOR_INDEX_FAILED" => "Vector Indexing",
+        "DOCUMENT_DB_COMMIT_FAILED" => "DB 저장",
+        "DOCUMENT_PROCESSING_FAILED" => "색인 처리",
+        _ => null
     };
 
     [JsonIgnore]
