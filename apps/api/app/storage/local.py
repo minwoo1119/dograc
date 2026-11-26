@@ -1,7 +1,17 @@
 import asyncio
+import os
 from pathlib import Path
 
 from app.storage.protocol import FileStorage, FileStorageError
+
+
+def _win_long_path(path: Path) -> Path:
+    """Apply extended-length prefix on Windows so deep UUID object keys never hit MAX_PATH (260)."""
+    if os.name == "nt":
+        raw = str(path.resolve())
+        if not raw.startswith("\\\\?\\"):
+            return Path("\\\\?\\" + raw)
+    return path
 
 
 class LocalFileStorage(FileStorage):
@@ -9,13 +19,13 @@ class LocalFileStorage(FileStorage):
 
     def __init__(self, base_dir: Path | str = "./data/storage") -> None:
         self._base_dir = Path(base_dir).resolve()
-        self._base_dir.mkdir(parents=True, exist_ok=True)
+        _win_long_path(self._base_dir).mkdir(parents=True, exist_ok=True)
 
     def _resolve_path(self, object_key: str) -> Path:
         target = (self._base_dir / object_key).resolve()
         if not target.is_relative_to(self._base_dir):
             raise FileStorageError("Path traversal detected")
-        return target
+        return _win_long_path(target)
 
     async def get(self, *, object_key: str) -> bytes:
         path = self._resolve_path(object_key)

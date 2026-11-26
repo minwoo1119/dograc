@@ -1,4 +1,6 @@
 from functools import lru_cache
+import os
+from pathlib import Path
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -6,13 +8,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=os.environ.get("DOGRAC_ENV_FILE", ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
 
     app_env: str = "development"
     app_name: str = "dograc"
+    dograc_data_dir: str | None = None
     api_host: str = "0.0.0.0"
     api_port: int = Field(default=8000, ge=1, le=65535)
     docs_enabled: bool = True
@@ -42,6 +45,12 @@ class Settings(BaseSettings):
         if self.chunk_overlap_chars >= self.chunk_size_chars:
             raise ValueError("CHUNK_OVERLAP_CHARS must be smaller than CHUNK_SIZE_CHARS")
         return self
+
+
+    def resolved_data_dir(self) -> Path:
+        if self.dograc_data_dir and self.dograc_data_dir.strip():
+            return Path(self.dograc_data_dir.strip()).expanduser().resolve()
+        return Path("./data").resolve()
 
 
 @lru_cache

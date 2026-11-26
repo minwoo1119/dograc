@@ -191,11 +191,21 @@
                                   Background="Transparent"
                                   BorderThickness="0"
                                   Foreground="{DynamicResource Brush.TextMuted}"
-                                  FontSize="11.5"
-                                  Content="진단 상세 ▾" />
+                                  FontSize="11.5">
+                        <ToggleButton.Style>
+                            <Style TargetType="ToggleButton">
+                                <Setter Property="Content" Value="진단 상세 ▾" />
+                                <Style.Triggers>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter Property="Content" Value="진단 상세 접기 ▴" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ToggleButton.Style>
+                    </ToggleButton>
                 </Grid>
 
-                <!-- Collapsible Diagnostic Details -->
+                <!-- Collapsible Diagnostic Details (height-clamped so small windows stay usable) -->
                 <Border Visibility="{Binding IsChecked, ElementName=DetailsToggle, Converter={StaticResource BoolToVisibility}}"
                         Background="{DynamicResource Brush.Canvas}"
                         BorderBrush="{DynamicResource Brush.Border}"
@@ -203,18 +213,22 @@
                         CornerRadius="6"
                         Padding="10,8"
                         Margin="0,8,0,0">
-                    <StackPanel>
-                        <TextBlock FontFamily="{StaticResource Font.Mono}"
-                                   FontSize="11"
-                                   Foreground="{DynamicResource Brush.TextMuted}"
-                                   Text="{Binding Error.FormattedTimestamp, ElementName=Root, StringFormat=발생 시각: {0}}" />
-                        <TextBlock FontFamily="{StaticResource Font.Mono}"
-                                   FontSize="11"
-                                   Foreground="{DynamicResource Brush.TextPrimary}"
-                                   TextWrapping="Wrap"
-                                   Margin="0,4,0,0"
-                                   Text="{Binding Error.TechnicalDetails, ElementName=Root}" />
-                    </StackPanel>
+                    <ScrollViewer MaxHeight="130"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel>
+                            <TextBlock FontFamily="{StaticResource Font.Mono}"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource Brush.TextMuted}"
+                                       Text="{Binding Error.FormattedTimestamp, ElementName=Root, StringFormat=발생 시각: {0}}" />
+                            <TextBlock FontFamily="{StaticResource Font.Mono}"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource Brush.TextPrimary}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,4,0,0"
+                                       Text="{Binding Error.TechnicalDetails, ElementName=Root}" />
+                        </StackPanel>
+                    </ScrollViewer>
                 </Border>
             </StackPanel>
         </StackPanel>

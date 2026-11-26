@@ -182,7 +182,7 @@ public sealed class FailureInjectionTests
         var err = _mapper.Map(apiEx, new ErrorContext("Documents", "API", "문서 색인"));
 
         Assert.Equal("IDX-001", err.ErrorCode);
-        Assert.Equal("텍스트 추출", err.PipelineStage);
+        Assert.Equal("PDF 텍스트 추출", err.PipelineStage);
         Assert.Contains(err.RecoveryActions, a => a.Kind == RecoveryActionKind.ReselectFile);
     }
 
@@ -407,6 +407,59 @@ public sealed class FailureInjectionTests
         Assert.False(err.IsConfirmedCause);
         Assert.Equal("추정 원인", err.CausePrefixLabel);
         Assert.DoesNotContain("자동 정리되었으며", err.Impact);
+    }
+
+    // Extra: PDF vs TXT parse errors produce distinct causes and remediation guidance
+    [Fact]
+    public void ErrorMapper_DistinguishesTxtEncodingErrorFromPdfCorruption()
+    {
+        var txtEx = new ApiException(422, "Invalid UTF-8 text encoding", "DOCUMENT_ENCODING_ERROR", pipelineStage: "text_extraction");
+        var txtErr = _mapper.Map(txtEx, new ErrorContext("Documents", "API", "문서 색인 (legacy_korean.txt)"));
+
+        var pdfEx = new ApiException(422, "Failed to parse PDF stream", "DOCUMENT_PARSE_FAILED", pipelineStage: "text_extraction");
+        var pdfErr = _mapper.Map(pdfEx, new ErrorContext("Documents", "API", "문서 색인 (broken.pdf)"));
+
+        Assert.Equal("IDX-006", txtErr.ErrorCode);
+        Assert.Contains("UTF-8", txtErr.Resolution);
+        Assert.Contains("TXT 인코딩", txtErr.Title);
+
+        Assert.Equal("IDX-001", pdfErr.ErrorCode);
+        Assert.Contains("PDF", pdfErr.Title);
+        Assert.Contains("PDF", pdfErr.Resolution);
+    }
+
+    // Extra: Concurrent processing 409 & crash-interrupted recovery codes map cleanly
+    [Fact]
+    public void ErrorMapper_MapsConcurrent409AndInterruptedCrashRecovery()
+    {
+        var conflictEx = new ApiException(409, "Already processing", "DOCUMENT_ALREADY_PROCESSING", pipelineStage: "processing");
+        var conflictErr = _mapper.Map(conflictEx, new ErrorContext("Documents", "API", "문서 색인"));
+
+        var interruptedEx = new ApiException(500, "Process interrupted", "DOCUMENT_PROCESS_INTERRUPTED", pipelineStage: "processing");
+        var interruptedErr = _mapper.Map(interruptedEx, new ErrorContext("Documents", "API", "문서 색인"));
+
+        Assert.Equal("DOC-005", conflictErr.ErrorCode);
+        Assert.Equal(ErrorSeverity.Warning, conflictErr.Severity);
+        Assert.False(conflictErr.IsRetryable);
+
+        Assert.Equal("IDX-007", interruptedErr.ErrorCode);
+        Assert.True(interruptedErr.IsRetryable);
+        Assert.Contains(interruptedErr.RecoveryActions, a => a.Kind == RecoveryActionKind.ReindexDocument);
+    }
+
+    // Extra: ServiceRuntimeOptions isolates persistent user data outside app install directory
+    [Fact]
+    public void ServiceRuntimeOptions_SeparatesUserDataDirectoryFromInstallRoot()
+    {
+        var installRoot = Path.Combine(Path.GetTempPath(), "dograc-install-current");
+        var userRoot = Path.Combine(Path.GetTempPath(), "dograc-user-localappdata");
+        var options = new ServiceRuntimeOptions(installRoot, DataDirectoryOverride: userRoot);
+
+        Assert.Equal(Path.Combine(installRoot, "apps", "api"), options.ApiDirectory);
+        Assert.Equal(Path.Combine(userRoot, "data"), options.UserDataDirectory);
+        Assert.Equal(Path.Combine(userRoot, ".env"), options.UserEnvFilePath);
+        Assert.EndsWith("python.exe", options.UserVenvPythonPath);
+        Assert.DoesNotContain("dograc-install-current", options.UserDataDirectory);
     }
 
     // Extra: Sensitive data sanitizer masks tokens, keys, emails, and prompt blocks
