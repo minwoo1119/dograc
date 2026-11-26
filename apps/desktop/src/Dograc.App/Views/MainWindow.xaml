@@ -102,6 +102,25 @@
                                 Orientation="Horizontal"
                                 VerticalAlignment="Center"
                                 shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <!-- Orca-style One-Click Update Pill Button -->
+                        <Button Style="{StaticResource Button.Primary}"
+                                Command="{Binding InstallOrOpenUpdateCommand}"
+                                Visibility="{Binding HasAvailableUpdate, Converter={StaticResource BoolToVisibility}}"
+                                IsEnabled="{Binding IsNotInstallingUpdate}"
+                                ToolTip="{Binding UpdateTooltip}"
+                                Padding="10,4"
+                                FontSize="11"
+                                Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock FontFamily="{StaticResource Font.Icon}"
+                                           Text="&#xE896;"
+                                           FontSize="11"
+                                           Margin="0,0,5,0"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding UpdateButtonLabel}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
                         <ItemsControl ItemsSource="{Binding ServiceStatuses}" Margin="0,0,12,0" VerticalAlignment="Center">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -208,12 +227,14 @@
                                                     BorderBrush="Transparent"
                                                     BorderThickness="1">
                                                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                                    <TextBlock FontFamily="{StaticResource Font.Icon}"
+                                                    <TextBlock x:Name="ItemIcon"
+                                                               FontFamily="{StaticResource Font.Icon}"
                                                                Text="{Binding Glyph}"
                                                                FontSize="15"
                                                                HorizontalAlignment="Center"
                                                                Foreground="{DynamicResource Brush.TextSecondary}" />
-                                                    <TextBlock Text="{Binding Label}"
+                                                    <TextBlock x:Name="ItemLabel"
+                                                               Text="{Binding Label}"
                                                                FontSize="9.5"
                                                                Margin="0,2,0,0"
                                                                HorizontalAlignment="Center"
@@ -224,6 +245,19 @@
                                                 <Trigger Property="IsMouseOver" Value="True">
                                                     <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource Brush.SurfaceSubtle}" />
                                                 </Trigger>
+                                                <DataTrigger Value="True">
+                                                    <DataTrigger.Binding>
+                                                        <MultiBinding Converter="{StaticResource MultiEquality}">
+                                                            <Binding Path="Page" />
+                                                            <Binding Path="DataContext.SelectedPage" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                        </MultiBinding>
+                                                    </DataTrigger.Binding>
+                                                    <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource Brush.PrimarySubtle}" />
+                                                    <Setter TargetName="ItemBd" Property="BorderBrush" Value="{DynamicResource Brush.PrimaryBorder}" />
+                                                    <Setter TargetName="ItemIcon" Property="Foreground" Value="{DynamicResource Brush.Primary}" />
+                                                    <Setter TargetName="ItemLabel" Property="Foreground" Value="{DynamicResource Brush.Primary}" />
+                                                    <Setter TargetName="ItemLabel" Property="FontWeight" Value="SemiBold" />
+                                                </DataTrigger>
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate>
                                     </Button.Template>
@@ -411,22 +445,58 @@
                                 Padding="8,0">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Button Content="Documents"
-                                        Style="{StaticResource Button.Secondary}"
                                         Command="{Binding SelectContextTabCommand}"
                                         CommandParameter="{x:Static models:ContextPanelTab.Documents}"
                                         Padding="10,4"
-                                        Margin="0,0,4,0" />
+                                        Margin="0,0,4,0">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDocumentsContextTab}" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.PrimarySubtle}" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.PrimaryBorder}" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Primary}" />
+                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
                                 <Button Content="Evidence"
-                                        Style="{StaticResource Button.Secondary}"
                                         Command="{Binding SelectContextTabCommand}"
                                         CommandParameter="{x:Static models:ContextPanelTab.Evidence}"
                                         Padding="10,4"
-                                        Margin="0,0,4,0" />
+                                        Margin="0,0,4,0">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEvidenceContextTab}" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.PrimarySubtle}" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.PrimaryBorder}" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Primary}" />
+                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
                                 <Button Content="Preview"
-                                        Style="{StaticResource Button.Secondary}"
                                         Command="{Binding SelectContextTabCommand}"
                                         CommandParameter="{x:Static models:ContextPanelTab.Preview}"
-                                        Padding="10,4" />
+                                        Padding="10,4">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsPreviewContextTab}" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.PrimarySubtle}" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.PrimaryBorder}" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Primary}" />
+                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
                             </StackPanel>
                         </Border>
 
@@ -873,7 +943,7 @@
                                Style="{StaticResource Text.Caption}"
                                VerticalAlignment="Center"
                                HorizontalAlignment="Left" />
-                    <TextBlock Text="dograc Desktop · Phase 6"
+                    <TextBlock Text="{Binding AppVersionLabel}"
                                Style="{StaticResource Text.Caption}"
                                VerticalAlignment="Center"
                                HorizontalAlignment="Right" />

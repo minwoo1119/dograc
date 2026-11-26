@@ -154,4 +154,141 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <!-- KDS Light/Dark Hairline ComboBoxItem -->
+    <Style TargetType="ComboBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Primary}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.BodyM}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBoxItem">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="{StaticResource Radius.Small}"
+                            Padding="{TemplateBinding Padding}"
+                            Margin="3,1">
+                        <ContentPresenter VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.SurfaceHover}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.PrimarySubtle}" />
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.Primary}" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- KDS Light/Dark Hairline ComboBox (ReadOnly + Editable) -->
+    <Style TargetType="ComboBox">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="{StaticResource Border.Hairline}" />
+        <Setter Property="FontFamily" Value="{StaticResource Font.Primary}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.BodyM}" />
+        <Setter Property="Padding" Value="10,0,28,0" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBox">
+                    <Grid>
+                        <Border x:Name="OuterBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{StaticResource Radius.Small}">
+                            <Grid>
+                                <ToggleButton Focusable="False"
+                                              IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                              ClickMode="Press"
+                                              Background="Transparent"
+                                              BorderThickness="0"
+                                              HorizontalAlignment="Stretch"
+                                              VerticalAlignment="Stretch">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border Background="Transparent">
+                                                <TextBlock FontFamily="{StaticResource Font.Icon}"
+                                                           Text="&#xE70D;"
+                                                           FontSize="10"
+                                                           Foreground="{DynamicResource Brush.TextMuted}"
+                                                           HorizontalAlignment="Right"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,9,0" />
+                                            </Border>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                </ToggleButton>
+
+                                <ContentPresenter x:Name="ContentSite"
+                                                  IsHitTestVisible="False"
+                                                  Content="{TemplateBinding SelectionBoxItem}"
+                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                  ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                  ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
+                                                  Margin="{TemplateBinding Padding}"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalAlignment="Left" />
+
+                                <TextBox x:Name="PART_EditableTextBox"
+                                         Visibility="Hidden"
+                                         IsReadOnly="{TemplateBinding IsReadOnly}"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         Foreground="{DynamicResource Brush.TextPrimary}"
+                                         CaretBrush="{DynamicResource Brush.Primary}"
+                                         Margin="8,0,26,0"
+                                         VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
+                        <Popup x:Name="Popup"
+                               Placement="Bottom"
+                               IsOpen="{TemplateBinding IsDropDownOpen}"
+                               AllowsTransparency="True"
+                               Focusable="False"
+                               PopupAnimation="Fade">
+                            <Border MinWidth="{TemplateBinding ActualWidth}"
+                                    MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                    Background="{DynamicResource Brush.Surface}"
+                                    BorderBrush="{DynamicResource Brush.Border}"
+                                    BorderThickness="{StaticResource Border.Hairline}"
+                                    CornerRadius="{StaticResource Radius.Small}"
+                                    Margin="0,4,0,0"
+                                    Padding="0,3">
+                                <ScrollViewer SnapsToDevicePixels="True" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEditable" Value="True">
+                            <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="ContentSite" Property="Visibility" Value="Hidden" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="OuterBorder" Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
+                        </Trigger>
+                        <Trigger Property="IsDropDownOpen" Value="True">
+                            <Setter TargetName="OuterBorder" Property="BorderBrush" Value="{DynamicResource Brush.Primary}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="OuterBorder" Property="Background" Value="{DynamicResource Brush.SurfaceSubtle}" />
+                            <Setter Property="Opacity" Value="0.6" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>
