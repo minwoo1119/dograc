@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Dograc.Core.Models;
 using Dograc.Core.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Dograc.Infrastructure.Api;
 
@@ -22,6 +23,7 @@ public sealed class DogracApiClient : IDogracApiClient
 
     private readonly HttpClient _httpClient;
 
+    [ActivatorUtilitiesConstructor]
     public DogracApiClient(HttpClient httpClient)
         : this(httpClient, null)
     {
