@@ -1,3 +1,5 @@
+using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using Dograc.Core.Errors;
 using Dograc.Core.Models;
@@ -116,6 +118,77 @@ public sealed class OllamaService : IOllamaService
                 $"[LLM-001] 로컬 Ollama 서버({cleanBase})에 연결할 수 없습니다. Ollama가 실행 중인지 확인해 주세요.",
                 []);
         }
+    }
+
+    public async Task PullModelAsync(
+        string endpointUrl,
+        string modelName,
+        IProgress<OllamaPullProgress>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        var cleanBase = NormalizeBaseEndpoint(endpointUrl);
+        if (!Uri.TryCreate(cleanBase, UriKind.Absolute, out var parsedUri) ||
+            (parsedUri.Scheme != Uri.UriSchemeHttp && parsedUri.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new UriFormatException($"올바른 Ollama URL 형식이 아닙니다: {endpointUrl}");
+        }
+
+        if (string.IsNullOrWhiteSpace(modelName))
+        {
+            throw new ArgumentException("다운로드할 모델 이름이 비어 있습니다.", nameof(modelName));
+        }
+
+        var pullUrl = $"{cleanBase}/api/pull";
+        using var pullClient = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+        using var request = new HttpRequestMessage(HttpMethod.Post, pullUrl)
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(new { name = modelName.Trim(), stream = true }),
+                Encoding.UTF8,
+                "application/json")
+        };
+
+        using var response = await pullClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var errText = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new ApiException((int)response.StatusCode, $"Ollama 모델 다운로드 실패 (HTTP {(int)response.StatusCode}): {errText}", "OLLAMA_PULL_FAILED");
+        }
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var reader = new StreamReader(stream);
+
+        while (await reader.ReadLineAsync(cancellationToken) is { } line)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(line);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("error", out var errProp) && errProp.ValueKind == JsonValueKind.String)
+                {
+                    throw new ApiException(500, errProp.GetString() ?? "모델 다운로드 중 오류가 발생했습니다.", "OLLAMA_PULL_FAILED");
+                }
+
+                var status = root.TryGetProperty("status", out var st) ? st.GetString() ?? "다운로드 중..." : "다운로드 중...";
+                var completed = root.TryGetProperty("completed", out var comp) && comp.TryGetInt64(out var c) ? c : 0L;
+                var total = root.TryGetProperty("total", out var tot) && tot.TryGetInt64(out var t) ? t : 0L;
+                var percent = total > 0 ? (int)Math.Clamp(completed * 100L / total, 0, 100) : (status.Contains("success", StringComparison.OrdinalIgnoreCase) ? 100 : 0);
+
+                progress?.Report(new OllamaPullProgress(status, completed, total, percent));
+            }
+            catch (JsonException)
+            {
+                // Ignore non-JSON heartbeat lines if any.
+            }
+        }
+
+        _logger?.LogInfo("OllamaService", "Ollama", "PullModel", $"모델 다운로드 완료: {modelName}");
     }
 
     public static string NormalizeBaseEndpoint(string endpointUrl)

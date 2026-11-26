@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Dograc.Core.Errors;
 using Dograc.Core.Models;
 using Dograc.Core.Services;
 
@@ -22,19 +23,24 @@ public sealed class InstalledModelRowViewModel
     public string SizeLabel => Model.SizeLabel;
     public string Family => Model.Family ?? "ollama";
     public string ParameterSize => Model.ParameterSize ?? "-";
-    public string MetaLabel => $"{SizeLabel} · {Family}";
+    public string MetaLabel => ParameterSize != "-" ? $"{SizeLabel} · {ParameterSize} · {Family}" : $"{SizeLabel} · {Family}";
     public bool IsActive { get; }
     public bool IsNotActive => !IsActive;
 }
 
 /// <summary>
-/// ViewModel for the Models page managing local Ollama connectivity, model discovery, and active model selection.
+/// ViewModel for the Models page separating Ollama server connectivity from active model runnability,
+/// supporting in-app Ollama model pull with live progress & cancellation, and command copy.
 /// </summary>
 public sealed partial class ModelsViewModel : PageViewModelBase
 {
     private readonly IOllamaService _ollamaService;
     private readonly ISettingsStore _settingsStore;
+    private readonly IErrorHandlingService? _errorHandling;
+    private readonly IRecoveryActionService? _recoveryService;
     private readonly List<OllamaModelInfo> _rawModels = [];
+    private CancellationTokenSource? _pullCts;
+    private string? _lastPullModel;
 
     [ObservableProperty]
     private string _ollamaEndpointUrl;
@@ -47,7 +53,15 @@ public sealed partial class ModelsViewModel : PageViewModelBase
     private bool _isBusy;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ConnectionStatusBadge))]
+    [NotifyPropertyChangedFor(nameof(IsSelectedModelRunnable))]
+    [NotifyPropertyChangedFor(nameof(SelectedModelRunnableLabel))]
     private bool _isConnected;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ConnectionStatusBadge))]
+    [NotifyPropertyChangedFor(nameof(SelectedModelRunnableLabel))]
+    private bool _hasCheckedConnection;
 
     [ObservableProperty]
     private string _connectionMessage = "연결 테스트 버튼을 눌러 로컬 Ollama 모델 목록을 확인하세요.";
@@ -58,12 +72,32 @@ public sealed partial class ModelsViewModel : PageViewModelBase
     [ObservableProperty]
     private string _selectedSection = "설치된 모델";
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsNotDownloadingModel))]
+    private bool _isDownloadingModel;
+
+    [ObservableProperty]
+    private string? _downloadingModelName;
+
+    [ObservableProperty]
+    private int _downloadProgressPercent;
+
+    [ObservableProperty]
+    private string _downloadStatusText = string.Empty;
+
+    [ObservableProperty]
+    private ApplicationError? _activeError;
+
     public ModelsViewModel(
         IOllamaService ollamaService,
-        ISettingsStore settingsStore)
+        ISettingsStore settingsStore,
+        IErrorHandlingService? errorHandling = null,
+        IRecoveryActionService? recoveryService = null)
     {
         _ollamaService = ollamaService;
         _settingsStore = settingsStore;
+        _errorHandling = errorHandling;
+        _recoveryService = recoveryService;
 
         var current = _settingsStore.Current;
         _ollamaEndpointUrl = current.OllamaEndpointUrl;
@@ -87,14 +121,28 @@ public sealed partial class ModelsViewModel : PageViewModelBase
     }
 
     public override string PageTitle => "Models";
-    public override string PageDescription => "로컬 Ollama 서버를 연결하고 설치된 LLM 모델을 탐색·선택합니다.";
+    public override string PageDescription => "로컬 Ollama 서버 연결 상태와 실행 가능한 LLM 모델을 관리합니다.";
 
     public bool IsNotBusy => !IsBusy;
-
+    public bool IsNotDownloadingModel => !IsDownloadingModel;
     public bool HasNoInstalledModels => InstalledModels.Count == 0;
 
-    public ObservableCollection<InstalledModelRowViewModel> InstalledModels { get; }
+    public string ConnectionStatusBadge => !HasCheckedConnection
+        ? "연결 점검 전"
+        : IsConnected ? "Ollama 연결됨" : "Ollama 미연결";
 
+    public bool IsSelectedModelRunnable =>
+        IsConnected && _rawModels.Any(m => string.Equals(m.Name, SelectedModelName, StringComparison.OrdinalIgnoreCase));
+
+    public string SelectedModelRunnableLabel => !HasCheckedConnection
+        ? $"선택 모델: {SelectedModelName} (연결 테스트 후 실행 가능 여부 확인)"
+        : !IsConnected
+            ? $"선택 모델: {SelectedModelName} (Ollama 연결 필요)"
+            : IsSelectedModelRunnable
+                ? $"선택 모델: {SelectedModelName} — 설치됨 · 실행 가능"
+                : $"선택 모델: {SelectedModelName} — 미설치 (다운로드 필요)";
+
+    public ObservableCollection<InstalledModelRowViewModel> InstalledModels { get; }
     public IReadOnlyList<RecommendedModelItem> RecommendedModels { get; }
 
     [RelayCommand]
@@ -106,10 +154,12 @@ public sealed partial class ModelsViewModel : PageViewModelBase
         }
 
         IsBusy = true;
+        ActiveError = null;
         ConnectionMessage = "로컬 Ollama 서버에 연결하는 중입니다...";
         try
         {
             var result = await _ollamaService.CheckAndListModelsAsync(OllamaEndpointUrl);
+            HasCheckedConnection = true;
             IsConnected = result.IsSuccess;
             ConnectionMessage = result.Message;
 
@@ -126,11 +176,98 @@ public sealed partial class ModelsViewModel : PageViewModelBase
 
             RebuildInstalledRows();
         }
+        catch (Exception ex)
+        {
+            HasCheckedConnection = true;
+            IsConnected = false;
+            var ctx = new ErrorContext("Models", "Ollama", "Ollama 연결 테스트");
+            ActiveError = _errorHandling?.Handle(ex, ctx, TestAndRefreshModelsAsync, notifyToast: false);
+            ConnectionMessage = ActiveError?.Description ?? ex.Message;
+        }
         finally
         {
             IsBusy = false;
         }
     }
+
+    [RelayCommand]
+    private async Task DownloadModelAsync(string? modelName)
+    {
+        if (string.IsNullOrWhiteSpace(modelName) || IsDownloadingModel)
+        {
+            return;
+        }
+
+        _pullCts?.Cancel();
+        _pullCts?.Dispose();
+        _pullCts = new CancellationTokenSource();
+        _lastPullModel = modelName;
+
+        IsDownloadingModel = true;
+        DownloadingModelName = modelName;
+        DownloadProgressPercent = 0;
+        DownloadStatusText = $"{modelName} 다운로드 준비 중...";
+        ActiveError = null;
+
+        try
+        {
+            var progress = new Progress<OllamaPullProgress>(p => RunOnUiThread(() =>
+            {
+                DownloadProgressPercent = p.Percent;
+                DownloadStatusText = $"{modelName}: {p.Status} ({p.Percent}%)";
+            }));
+
+            await _ollamaService.PullModelAsync(OllamaEndpointUrl, modelName, progress, _pullCts.Token);
+            DownloadProgressPercent = 100;
+            DownloadStatusText = $"{modelName} 다운로드가 완료되었습니다.";
+            await TestAndRefreshModelsAsync();
+        }
+        catch (OperationCanceledException oce)
+        {
+            DownloadStatusText = $"{modelName} 다운로드가 취소되었습니다.";
+            var ctx = new ErrorContext("Models", "Ollama", $"모델 다운로드 ({modelName})");
+            ActiveError = _errorHandling?.Handle(oce, ctx, () => DownloadModelAsync(modelName), notifyToast: false);
+        }
+        catch (Exception ex)
+        {
+            var ctx = new ErrorContext("Models", "Ollama", $"모델 다운로드 ({modelName})");
+            ActiveError = _errorHandling?.Handle(ex, ctx, () => DownloadModelAsync(modelName), notifyToast: false);
+            DownloadStatusText = ActiveError?.Description ?? ex.Message;
+        }
+        finally
+        {
+            IsDownloadingModel = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelDownload()
+    {
+        _pullCts?.Cancel();
+    }
+
+    [RelayCommand]
+    private async Task ExecuteErrorActionAsync(RecoveryActionDescriptor? action)
+    {
+        if (action is null)
+        {
+            return;
+        }
+
+        if (action.Kind == RecoveryActionKind.Retry && !string.IsNullOrWhiteSpace(_lastPullModel))
+        {
+            await DownloadModelAsync(_lastPullModel);
+            return;
+        }
+
+        if (_recoveryService is not null)
+        {
+            await _recoveryService.ExecuteAsync(action, ActiveError, TestAndRefreshModelsAsync);
+        }
+    }
+
+    [RelayCommand]
+    private void DismissError() => ActiveError = null;
 
     [RelayCommand]
     private void SelectInstalledModel(InstalledModelRowViewModel? row)
@@ -159,6 +296,8 @@ public sealed partial class ModelsViewModel : PageViewModelBase
                 : SelectedModelName.Trim()
         };
         _settingsStore.Save(updated);
+        OnPropertyChanged(nameof(IsSelectedModelRunnable));
+        OnPropertyChanged(nameof(SelectedModelRunnableLabel));
         ConnectionMessage = $"설정이 저장되었습니다 ({updated.SelectedModelName} @ {updated.OllamaEndpointUrl}).";
     }
 
@@ -175,18 +314,10 @@ public sealed partial class ModelsViewModel : PageViewModelBase
             Clipboard.SetText(command);
             CopiedNotice = $"클립보드에 복사됨: {command}";
         }
-        catch
+        catch (Exception ex)
         {
-            CopiedNotice = $"명령어: {command}";
+            CopiedNotice = $"클립보드 복사 실패 ({ex.Message}) — 명령어: {command}";
         }
-    }
-
-    public void SetInstalledModelsForDisplay(IEnumerable<OllamaModelInfo> models)
-    {
-        _rawModels.Clear();
-        _rawModels.AddRange(models);
-        IsConnected = _rawModels.Count > 0;
-        RebuildInstalledRows();
     }
 
     private void RebuildInstalledRows()
@@ -199,6 +330,8 @@ public sealed partial class ModelsViewModel : PageViewModelBase
         }
 
         OnPropertyChanged(nameof(HasNoInstalledModels));
+        OnPropertyChanged(nameof(IsSelectedModelRunnable));
+        OnPropertyChanged(nameof(SelectedModelRunnableLabel));
     }
 
     private static void RunOnUiThread(Action action)

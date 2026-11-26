@@ -50,7 +50,7 @@ async def upload_document(
         declared_media_type=file.content_type,
         content=content,
     )
-    return DocumentResponse.model_validate(document)
+    return DocumentResponse.from_document(document)
 
 
 @router.get(
@@ -71,7 +71,7 @@ async def list_documents(
         workspace_id=workspace_id,
         owner_id=user_id,
     )
-    return [DocumentResponse.model_validate(doc) for doc in documents]
+    return [DocumentResponse.from_document(doc) for doc in documents]
 
 
 @document_router.get(
@@ -92,7 +92,7 @@ async def get_document(
         document_id=document_id,
         owner_id=user_id,
     )
-    return DocumentResponse.model_validate(document)
+    return DocumentResponse.from_document(document)
 
 
 @document_router.delete(

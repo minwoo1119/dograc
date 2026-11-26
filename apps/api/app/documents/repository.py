@@ -34,6 +34,11 @@ class DocumentRepository:
             select(Document)
             .join(Workspace, Workspace.id == Document.workspace_id)
             .where(Document.workspace_id == workspace_id, Workspace.owner_id == owner_id)
+            .options(
+                selectinload(Document.versions)
+                .selectinload(DocumentVersion.pages)
+                .selectinload(DocumentPage.chunks)
+            )
             .order_by(Document.created_at.desc())
         )
         return list((await self._session.scalars(statement)).all())
@@ -48,7 +53,11 @@ class DocumentRepository:
             select(Document)
             .join(Workspace, Workspace.id == Document.workspace_id)
             .where(Document.id == document_id, Workspace.owner_id == owner_id)
-            .options(selectinload(Document.versions).selectinload(DocumentVersion.pages))
+            .options(
+                selectinload(Document.versions)
+                .selectinload(DocumentVersion.pages)
+                .selectinload(DocumentPage.chunks)
+            )
         )
         return await self._session.scalar(statement)
 
