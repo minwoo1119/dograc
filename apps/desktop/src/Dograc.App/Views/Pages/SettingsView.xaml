@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:theme="clr-namespace:Dograc.Core.Theme;assembly=Dograc.Core">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="20" MaxWidth="720" HorizontalAlignment="Left">
+        <StackPanel Margin="20" MaxWidth="740" HorizontalAlignment="Left">
             <StackPanel Margin="0,0,0,16">
                 <TextBlock Text="{Binding PageTitle}" Style="{StaticResource Text.TitleM}" />
                 <TextBlock Text="{Binding PageDescription}" Style="{StaticResource Text.Caption}" Margin="0,4,0,0" />
@@ -60,7 +60,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- Runtime & Updates -->
+            <!-- Runtime & Velopack One-Click Updates -->
             <Border Background="{DynamicResource Brush.Surface}"
                     BorderBrush="{DynamicResource Brush.Border}"
                     BorderThickness="{StaticResource Border.Hairline}"
@@ -69,7 +69,21 @@
                 <StackPanel>
                     <Grid Margin="0,0,0,8">
                         <StackPanel>
-                            <TextBlock Text="애플리케이션 정보 및 업데이트" Style="{StaticResource Text.TitleS}" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="애플리케이션 정보 및 자동 업데이트" Style="{StaticResource Text.TitleS}" />
+                                <Border Background="{DynamicResource Brush.PrimarySubtle}"
+                                        BorderBrush="{DynamicResource Brush.PrimaryBorder}"
+                                        BorderThickness="{StaticResource Border.Hairline}"
+                                        CornerRadius="{StaticResource Radius.Small}"
+                                        Padding="7,1"
+                                        Margin="8,0,0,0"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding UpdateModeBadge}"
+                                               FontSize="10.5"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource Brush.Primary}" />
+                                </Border>
+                            </StackPanel>
                             <TextBlock Text="{Binding CurrentVersionLabel, StringFormat='현재 버전: {0}'}"
                                        FontFamily="{StaticResource Font.Mono}"
                                        FontSize="12"
@@ -105,16 +119,32 @@
                                        Foreground="{DynamicResource Brush.TextPrimary}"
                                        TextWrapping="Wrap" />
 
+                            <ProgressBar Value="{Binding DownloadProgressPercent}"
+                                         Minimum="0"
+                                         Maximum="100"
+                                         Height="6"
+                                         Margin="0,8,0,0"
+                                         Foreground="{DynamicResource Brush.Primary}"
+                                         Background="{DynamicResource Brush.Border}"
+                                         Visibility="{Binding IsInstallingUpdate, Converter={StaticResource BoolToVisibility}}" />
+
                             <StackPanel Visibility="{Binding HasAvailableUpdate, Converter={StaticResource BoolToVisibility}}"
                                         Margin="0,8,0,0">
                                 <TextBlock Text="{Binding ReleaseNotes}"
                                            Style="{StaticResource Text.Caption}"
                                            TextWrapping="Wrap"
-                                           Margin="0,0,0,8" />
-                                <Button Content="GitHub 릴리스 페이지 열기"
-                                        Style="{StaticResource Button.Secondary}"
-                                        Command="{Binding OpenReleasePageCommand}"
-                                        HorizontalAlignment="Left" />
+                                           Margin="0,0,0,10" />
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="지금 업데이트 설치 및 재시작"
+                                            Style="{StaticResource Button.Primary}"
+                                            Command="{Binding InstallUpdateCommand}"
+                                            Visibility="{Binding CanAutoInstallUpdate, Converter={StaticResource BoolToVisibility}}"
+                                            IsEnabled="{Binding IsNotInstallingUpdate}"
+                                            Margin="0,0,8,0" />
+                                    <Button Content="GitHub 릴리스 페이지 열기"
+                                            Style="{StaticResource Button.Secondary}"
+                                            Command="{Binding OpenReleasePageCommand}" />
+                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
                     </Border>

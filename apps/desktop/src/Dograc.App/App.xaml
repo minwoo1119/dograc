@@ -14,6 +14,7 @@
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
             <converters:BoolToVisibilityConverter x:Key="InverseBoolToVisibility" Invert="True" />
             <converters:EnumEqualsConverter x:Key="EnumEquals" />
+            <converters:MultiEqualityConverter x:Key="MultiEquality" />
             <converters:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibility" />
             <converters:ServiceStateToBrushConverter x:Key="ServiceStateToBrush" />
             <converters:DocumentStatusToBrushConverter x:Key="DocumentStatusToBrush" />

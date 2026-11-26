@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -10,7 +11,7 @@ using Dograc.Core.Theme;
 namespace Dograc.App.ViewModels;
 
 /// <summary>
-/// Coordinates the Main Shell layout, Navigation Rail, Sidebar, Context Panel, startup orchestration, and status bar.
+/// Coordinates the Main Shell layout, Navigation Rail, Sidebar, Context Panel, startup orchestration, updates, and status bar.
 /// </summary>
 public sealed partial class MainShellViewModel : ObservableObject
 {
@@ -20,6 +21,7 @@ public sealed partial class MainShellViewModel : ObservableObject
     private readonly IStartupOrchestrator _startupOrchestrator;
     private readonly IWorkspaceContext _workspaceContext;
     private readonly ISettingsStore _settingsStore;
+    private readonly IUpdateService _updateService;
     private readonly IReadOnlyDictionary<NavigationPage, PageViewModelBase> _pages;
 
     private bool _isSyncingContext;
@@ -76,6 +78,24 @@ public sealed partial class MainShellViewModel : ObservableObject
     [ObservableProperty]
     private ConversationDto? _selectedConversation;
 
+    [ObservableProperty]
+    private bool _hasAvailableUpdate;
+
+    [ObservableProperty]
+    private bool _canAutoInstallUpdate;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsNotInstallingUpdate))]
+    private bool _isInstallingUpdate;
+
+    [ObservableProperty]
+    private string _updateButtonLabel = "업데이트";
+
+    [ObservableProperty]
+    private string _updateTooltip = "새 버전 업데이트";
+
+    private string? _availableUpdateUrl;
+
     public MainShellViewModel(
         INavigationService navigationService,
         IThemeService themeService,
@@ -83,6 +103,7 @@ public sealed partial class MainShellViewModel : ObservableObject
         IStartupOrchestrator startupOrchestrator,
         IWorkspaceContext workspaceContext,
         ISettingsStore settingsStore,
+        IUpdateService updateService,
         EvidenceViewModel evidenceViewModel,
         PreviewViewModel previewViewModel,
         ChatViewModel chatViewModel,
@@ -98,6 +119,7 @@ public sealed partial class MainShellViewModel : ObservableObject
         _startupOrchestrator = startupOrchestrator;
         _workspaceContext = workspaceContext;
         _settingsStore = settingsStore;
+        _updateService = updateService;
         DocumentsPanel = documentsViewModel;
         EvidencePanel = evidenceViewModel;
         PreviewPanel = previewViewModel;
@@ -197,14 +219,98 @@ public sealed partial class MainShellViewModel : ObservableObject
     public bool IsEvidenceContextTab => SelectedContextTab == ContextPanelTab.Evidence;
     public bool IsPreviewContextTab => SelectedContextTab == ContextPanelTab.Preview;
 
+    public string AppVersionLabel => $"dograc Desktop · v{_updateService.CurrentVersion}";
+
+    public bool IsNotInstallingUpdate => !IsInstallingUpdate;
+
     public event EventHandler<EnvironmentCheckSummary>? SetupWizardRequested;
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
+        _ = CheckForUpdatesSilentlyAsync(cancellationToken);
         await _startupOrchestrator.RunStartupAsync(cancellationToken);
         if (_serviceManager.IsApiReady && !_hasLoadedInitialWorkspaces)
         {
             await LoadInitialWorkspaceDataAsync(cancellationToken);
+        }
+    }
+
+    public async Task CheckForUpdatesSilentlyAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var result = await _updateService.CheckForUpdatesAsync(cancellationToken);
+            RunOnUiThread(() =>
+            {
+                HasAvailableUpdate = result.HasUpdate;
+                CanAutoInstallUpdate = result.CanAutoInstall;
+                _availableUpdateUrl = result.ReleaseUrl;
+                if (result.HasUpdate)
+                {
+                    UpdateButtonLabel = $"업데이트 {result.LatestVersion}";
+                    UpdateTooltip = result.CanAutoInstall
+                        ? $"{result.LatestVersion} 클릭하여 즉시 다운로드 및 재시작 설치"
+                        : $"{result.LatestVersion} 릴리스 페이지 열기";
+                }
+            });
+        }
+        catch
+        {
+            // Silent ignore in offline/air-gapped environments.
+        }
+    }
+
+    [RelayCommand]
+    private async Task InstallOrOpenUpdateAsync()
+    {
+        if (IsInstallingUpdate)
+        {
+            return;
+        }
+
+        if (!CanAutoInstallUpdate)
+        {
+            if (!string.IsNullOrWhiteSpace(_availableUpdateUrl))
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo(_availableUpdateUrl) { UseShellExecute = true });
+                    StatusMessage = "GitHub 릴리스 페이지를 열었습니다.";
+                }
+                catch
+                {
+                    _navigationService.NavigateTo(NavigationPage.Settings);
+                }
+            }
+            else
+            {
+                _navigationService.NavigateTo(NavigationPage.Settings);
+            }
+
+            return;
+        }
+
+        IsInstallingUpdate = true;
+        UpdateButtonLabel = "업데이트 0%";
+        StatusMessage = "새 버전을 다운로드하고 있습니다...";
+        try
+        {
+            var progress = new Progress<int>(pct => RunOnUiThread(() =>
+            {
+                UpdateButtonLabel = $"업데이트 {pct}%";
+                StatusMessage = $"업데이트 다운로드 중 ({pct}%)... 완료 시 자동으로 재시작됩니다.";
+            }));
+
+            await _updateService.DownloadAndApplyUpdateAsync(progress);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"자동 업데이트 실패: {ex.Message}";
+            UpdateButtonLabel = "업데이트 재시도";
+        }
+        finally
+        {
+            IsInstallingUpdate = false;
         }
     }
 

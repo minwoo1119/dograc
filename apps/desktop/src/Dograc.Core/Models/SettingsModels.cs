@@ -60,7 +60,8 @@ public sealed record UpdateCheckResult(
     string ReleaseNotes,
     string ReleaseUrl,
     string? InstallerUrl,
-    string Message);
+    string Message,
+    bool CanAutoInstall = false);
 
 /// <summary>
 /// Request to display a document and target page inside the right Context Panel Preview tab.

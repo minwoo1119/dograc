@@ -106,8 +106,12 @@ public sealed class Phase6ServicesTests
         var check = await updater.CheckForUpdatesAsync();
 
         Assert.True(check.HasUpdate);
+        Assert.False(check.CanAutoInstall);
         Assert.Equal("v0.2.0", check.LatestVersion);
         Assert.Contains("dograc-win-Setup.exe", check.InstallerUrl);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            updater.DownloadAndApplyUpdateAsync());
 
         using var offlineClient = new HttpClient(new InlineHandler((_, _) =>
             throw new HttpRequestException("offline")));
@@ -115,6 +119,7 @@ public sealed class Phase6ServicesTests
         var offlineResult = await offlineUpdater.CheckForUpdatesAsync();
 
         Assert.False(offlineResult.HasUpdate);
+        Assert.False(offlineUpdater.IsAutoUpdateSupported);
         Assert.Contains("오프라인", offlineResult.Message);
     }
 

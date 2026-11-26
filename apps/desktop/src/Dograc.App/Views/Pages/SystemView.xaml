@@ -16,9 +16,12 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0">
+            <StackPanel Grid.Column="0" Margin="0,0,16,0">
                 <TextBlock Text="{Binding PageTitle}" Style="{StaticResource Text.TitleM}" />
-                <TextBlock Text="{Binding PageDescription}" Style="{StaticResource Text.Caption}" Margin="0,4,0,0" />
+                <TextBlock Text="{Binding PageDescription}"
+                           Style="{StaticResource Text.Caption}"
+                           TextWrapping="Wrap"
+                           Margin="0,4,0,0" />
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">

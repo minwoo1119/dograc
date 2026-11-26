@@ -29,11 +29,15 @@ public interface IOllamaService
 }
 
 /// <summary>
-/// Checks GitHub Releases for newer versions of dograc Desktop.
+/// Checks GitHub Releases / Velopack feed for newer versions of dograc Desktop and applies updates.
 /// </summary>
 public interface IUpdateService
 {
     string CurrentVersion { get; }
 
+    bool IsAutoUpdateSupported { get; }
+
     Task<UpdateCheckResult> CheckForUpdatesAsync(CancellationToken cancellationToken = default);
+
+    Task DownloadAndApplyUpdateAsync(IProgress<int>? progress = null, CancellationToken cancellationToken = default);
 }
