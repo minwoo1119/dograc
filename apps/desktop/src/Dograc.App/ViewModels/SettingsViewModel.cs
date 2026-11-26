@@ -8,7 +8,7 @@ using Dograc.Core.Theme;
 namespace Dograc.App.ViewModels;
 
 /// <summary>
-/// ViewModel for the Settings page covering persisted theme, shutdown options, runtime info, and one-click Velopack updates.
+/// ViewModel for the categorized Settings page (General, Appearance, Local Environment, Updates, About).
 /// </summary>
 public sealed partial class SettingsViewModel : PageViewModelBase
 {
@@ -18,6 +18,17 @@ public sealed partial class SettingsViewModel : PageViewModelBase
     private readonly ServiceRuntimeOptions _runtimeOptions;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsGeneralSection))]
+    [NotifyPropertyChangedFor(nameof(IsAppearanceSection))]
+    [NotifyPropertyChangedFor(nameof(IsLocalEnvSection))]
+    [NotifyPropertyChangedFor(nameof(IsUpdatesSection))]
+    [NotifyPropertyChangedFor(nameof(IsAboutSection))]
+    private string _selectedSection = "Appearance";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSystemTheme))]
+    [NotifyPropertyChangedFor(nameof(IsLightTheme))]
+    [NotifyPropertyChangedFor(nameof(IsDarkTheme))]
     private AppThemeMode _selectedThemeMode;
 
     [ObservableProperty]
@@ -66,16 +77,38 @@ public sealed partial class SettingsViewModel : PageViewModelBase
         var current = _settingsStore.Current;
         _selectedThemeMode = current.ThemeMode;
         _stopManagedServicesOnExit = current.StopManagedServicesOnExit;
+
+        _themeService.ThemeChanged += (_, _) =>
+        {
+            if (_selectedThemeMode != _themeService.CurrentMode)
+            {
+                _selectedThemeMode = _themeService.CurrentMode;
+                OnPropertyChanged(nameof(SelectedThemeMode));
+                OnPropertyChanged(nameof(IsSystemTheme));
+                OnPropertyChanged(nameof(IsLightTheme));
+                OnPropertyChanged(nameof(IsDarkTheme));
+            }
+        };
     }
 
-    public override string PageTitle => "Settings";
-    public override string PageDescription => "화면 테마, 앱 종료 정책 및 버전별 자동 업데이트를 관리합니다.";
+    public override string PageTitle => SelectedSection;
+    public override string PageDescription => "dograc 작업 환경을 설정합니다.";
+
+    public bool IsGeneralSection => SelectedSection == "General";
+    public bool IsAppearanceSection => SelectedSection == "Appearance";
+    public bool IsLocalEnvSection => SelectedSection == "Local Environment";
+    public bool IsUpdatesSection => SelectedSection == "Updates";
+    public bool IsAboutSection => SelectedSection == "About";
+
+    public bool IsSystemTheme => SelectedThemeMode == AppThemeMode.System;
+    public bool IsLightTheme => SelectedThemeMode == AppThemeMode.Light;
+    public bool IsDarkTheme => SelectedThemeMode == AppThemeMode.Dark;
 
     public string CurrentVersionLabel => $"v{_updateService.CurrentVersion}";
 
     public string UpdateModeBadge => _updateService.IsAutoUpdateSupported
         ? "Velopack 자동 업데이트 지원"
-        : "포터블 / 개발 모드 (릴리스 안내)";
+        : "포터블 / 개발 모드";
 
     public string ApiBaseUrl => _runtimeOptions.ApiBaseUrl;
 
@@ -84,6 +117,11 @@ public sealed partial class SettingsViewModel : PageViewModelBase
     public bool IsNotCheckingUpdate => !IsCheckingUpdate;
 
     public bool IsNotInstallingUpdate => !IsInstallingUpdate;
+
+    partial void OnSelectedSectionChanged(string value)
+    {
+        OnPropertyChanged(nameof(PageTitle));
+    }
 
     partial void OnSelectedThemeModeChanged(AppThemeMode value)
     {
@@ -99,6 +137,15 @@ public sealed partial class SettingsViewModel : PageViewModelBase
         if (_settingsStore.Current.StopManagedServicesOnExit != value)
         {
             _settingsStore.Save(_settingsStore.Current with { StopManagedServicesOnExit = value });
+        }
+    }
+
+    [RelayCommand]
+    private void SelectSection(string? section)
+    {
+        if (!string.IsNullOrWhiteSpace(section))
+        {
+            SelectedSection = section;
         }
     }
 
@@ -150,7 +197,7 @@ public sealed partial class SettingsViewModel : PageViewModelBase
 
         IsInstallingUpdate = true;
         DownloadProgressPercent = 0;
-        UpdateStatusMessage = $"{LatestVersion} 업데이트 패키지를 다운로드하는 중입니다 (0%)...";
+        UpdateStatusMessage = $"{LatestVersion} 다운로드 중 (0%)...";
         try
         {
             var progress = new Progress<int>(pct =>

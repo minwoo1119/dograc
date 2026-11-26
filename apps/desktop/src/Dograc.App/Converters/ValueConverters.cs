@@ -34,6 +34,15 @@ public sealed class EnumEqualsConverter : IValueConverter
         => value is true && parameter is not null ? parameter : Binding.DoNothing;
 }
 
+public sealed class StringEqualsConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        => string.Equals(value?.ToString(), parameter?.ToString(), StringComparison.OrdinalIgnoreCase);
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => value is true && parameter is not null ? parameter.ToString()! : Binding.DoNothing;
+}
+
 public sealed class MultiEqualityConverter : IMultiValueConverter
 {
     public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
@@ -52,6 +61,41 @@ public sealed class StringNotEmptyToVisibilityConverter : IValueConverter
         => Binding.DoNothing;
 }
 
+public sealed class NullToVisibilityConverter : IValueConverter
+{
+    public bool Invert { get; set; }
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        var hasValue = value is not null;
+        if (Invert)
+        {
+            hasValue = !hasValue;
+        }
+
+        return hasValue ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => Binding.DoNothing;
+}
+
+public sealed class ResourceKeyToGeometryConverter : IValueConverter
+{
+    public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is string key && !string.IsNullOrWhiteSpace(key))
+        {
+            return Application.Current?.TryFindResource(key) as Geometry;
+        }
+
+        return null;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => Binding.DoNothing;
+}
+
 public sealed class ServiceStateToBrushConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -60,8 +104,8 @@ public sealed class ServiceStateToBrushConverter : IValueConverter
             ? state switch
             {
                 ServiceState.Ready => "Brush.Success",
-                ServiceState.Checking or ServiceState.Starting or ServiceState.Degraded => "Brush.Warning",
-                ServiceState.Error => "Brush.Danger",
+                ServiceState.Checking or ServiceState.Starting or ServiceState.Initializing or ServiceState.Degraded or ServiceState.Stopping => "Brush.Warning",
+                ServiceState.Error or ServiceState.Failed or ServiceState.Unreachable => "Brush.Error",
                 _ => "Brush.TextMuted"
             }
             : "Brush.TextMuted";
@@ -81,8 +125,8 @@ public sealed class DocumentStatusToBrushConverter : IValueConverter
         var key = status switch
         {
             "ready" => "Brush.Success",
-            "processing" => "Brush.Primary",
-            "failed" => "Brush.Danger",
+            "processing" => "Brush.Accent",
+            "failed" => "Brush.Error",
             _ => "Brush.TextMuted"
         };
 

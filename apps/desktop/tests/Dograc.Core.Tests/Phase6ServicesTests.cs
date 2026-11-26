@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using Dograc.Core.Errors;
 using Dograc.Core.Models;
 using Dograc.Core.Theme;
 using Dograc.Infrastructure.Services;
@@ -110,8 +111,9 @@ public sealed class Phase6ServicesTests
         Assert.Equal("v0.2.0", check.LatestVersion);
         Assert.Contains("dograc-win-Setup.exe", check.InstallerUrl);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var portableEx = await Assert.ThrowsAsync<DogracApplicationException>(() =>
             updater.DownloadAndApplyUpdateAsync());
+        Assert.Equal("UPD-003", portableEx.Error.ErrorCode);
 
         using var offlineClient = new HttpClient(new InlineHandler((_, _) =>
             throw new HttpRequestException("offline")));

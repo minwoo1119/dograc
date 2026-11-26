@@ -1,189 +1,197 @@
 <UserControl x:Class="Dograc.App.Views.Pages.SystemView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <!-- Page Header -->
-        <Grid Grid.Row="0" Margin="0,0,0,14">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-
-            <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                <TextBlock Text="{Binding PageTitle}" Style="{StaticResource Text.TitleM}" />
-                <TextBlock Text="{Binding PageDescription}"
-                           Style="{StaticResource Text.Caption}"
-                           TextWrapping="Wrap"
-                           Margin="0,4,0,0" />
-            </StackPanel>
-
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <Button Content="전체 시작"
-                        Style="{StaticResource Button.Primary}"
-                        Command="{Binding StartAllCommand}"
-                        IsEnabled="{Binding IsNotBusy}"
-                        Margin="0,0,6,0" />
-                <Button Content="상태 새로고침"
-                        Style="{StaticResource Button.Secondary}"
-                        Command="{Binding RefreshStatusesCommand}"
-                        IsEnabled="{Binding IsNotBusy}"
-                        Margin="0,0,6,0" />
-                <Button Content="Setup Wizard"
-                        Style="{StaticResource Button.Secondary}"
-                        Command="{Binding OpenSetupWizardCommand}"
-                        Margin="0,0,6,0" />
-                <Button Content="앱 관리 서비스 중지"
-                        Style="{StaticResource Button.Secondary}"
-                        Command="{Binding StopManagedCommand}"
-                        IsEnabled="{Binding IsNotBusy}" />
-            </StackPanel>
-        </Grid>
-
-        <!-- Runtime Info Bar -->
-        <Border Grid.Row="1"
-                Background="{DynamicResource Brush.Surface}"
-                BorderBrush="{DynamicResource Brush.Border}"
-                BorderThickness="{StaticResource Border.Hairline}"
-                CornerRadius="{StaticResource Radius.Small}"
-                Padding="12,8"
-                Margin="0,0,0,12">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{DynamicResource Brush.Canvas}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel MaxWidth="1200" HorizontalAlignment="Stretch" Margin="32,28,32,36">
+            <!-- Header + Service Action Toolbar -->
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0"
-                           Text="{Binding OperationSummary}"
-                           Style="{StaticResource Text.Caption}"
-                           Foreground="{DynamicResource Brush.TextSecondary}"
-                           VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1"
-                           Text="{Binding ProjectRoot, StringFormat='Root: {0}'}"
-                           FontFamily="{StaticResource Font.Mono}"
-                           FontSize="11"
-                           Foreground="{DynamicResource Brush.TextMuted}"
-                           VerticalAlignment="Center" />
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="System" Style="{StaticResource Text.PageTitle}" />
+                    <TextBlock Text="{Binding OperationSummary}"
+                               Style="{StaticResource Text.Caption}"
+                               FontSize="13"
+                               Margin="0,6,0,0" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource Button.Secondary}"
+                            Content="새로고침"
+                            IsEnabled="{Binding IsNotBusy}"
+                            Command="{Binding RefreshStatusesCommand}" />
+                    <Button Style="{StaticResource Button.Primary}"
+                            Content="서비스 시작"
+                            Margin="8,0,0,0"
+                            IsEnabled="{Binding IsNotBusy}"
+                            Command="{Binding StartAllCommand}" />
+                    <Button Style="{StaticResource Button.Secondary}"
+                            Content="관리 서비스 중지"
+                            Margin="8,0,0,0"
+                            IsEnabled="{Binding IsNotBusy}"
+                            Command="{Binding StopManagedCommand}" />
+                    <Button Style="{StaticResource Button.Ghost}"
+                            Content="환경 진단"
+                            Margin="6,0,0,0"
+                            Command="{Binding OpenSetupWizardCommand}" />
+                </StackPanel>
             </Grid>
-        </Border>
 
-        <!-- Service Component Status Cards -->
-        <ItemsControl Grid.Row="2" ItemsSource="{Binding Services}" Margin="0,0,0,14">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Border Background="{DynamicResource Brush.Surface}"
-                            BorderBrush="{DynamicResource Brush.Border}"
-                            BorderThickness="{StaticResource Border.Hairline}"
-                            CornerRadius="{StaticResource Radius.Medium}"
-                            Padding="14,10"
-                            Margin="0,0,0,8">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-
-                            <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Ellipse Width="8" Height="8"
-                                         Margin="0,0,8,0"
-                                         Fill="{Binding State, Converter={StaticResource ServiceStateToBrush}}" />
-                                <TextBlock Text="{Binding Description}" Style="{StaticResource Text.TitleS}" />
-                            </StackPanel>
-
-                            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Border Background="{DynamicResource Brush.SurfaceSubtle}"
-                                        BorderBrush="{DynamicResource Brush.Border}"
-                                        BorderThickness="{StaticResource Border.Hairline}"
-                                        CornerRadius="{StaticResource Radius.Small}"
-                                        Padding="8,2"
-                                        Margin="0,0,6,0">
-                                    <TextBlock Text="{Binding OwnershipLabel}"
-                                               FontSize="11"
-                                               Foreground="{DynamicResource Brush.TextSecondary}" />
-                                </Border>
-                                <Border Background="{DynamicResource Brush.PrimarySubtle}"
-                                        BorderBrush="{DynamicResource Brush.PrimaryBorder}"
-                                        BorderThickness="{StaticResource Border.Hairline}"
-                                        CornerRadius="{StaticResource Radius.Small}"
-                                        Padding="8,2">
-                                    <TextBlock Text="{Binding StatusText}"
-                                               FontSize="11"
-                                               FontWeight="SemiBold"
-                                               Foreground="{DynamicResource Brush.Primary}" />
-                                </Border>
-                            </StackPanel>
-
-                            <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="16,6,0,0">
-                                <TextBlock Text="{Binding DetailMessage}" Style="{StaticResource Text.Caption}" />
-                                <TextBlock Text="{Binding ActionHint}"
-                                           Style="{StaticResource Text.Caption}"
-                                           Foreground="{DynamicResource Brush.Warning}"
-                                           Margin="0,2,0,0" />
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-
-        <!-- Real-Time System Log Viewer -->
-        <Border Grid.Row="3"
-                Background="{DynamicResource Brush.Surface}"
-                BorderBrush="{DynamicResource Brush.Border}"
-                BorderThickness="{StaticResource Border.Hairline}"
-                CornerRadius="{StaticResource Radius.Medium}">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="36" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <Border Grid.Row="0"
-                        BorderBrush="{DynamicResource Brush.Border}"
-                        BorderThickness="0,0,0,1"
-                        Padding="12,0">
+            <!-- Flat Service Status Table -->
+            <StackPanel Margin="0,24,0,0">
+                <Border BorderBrush="{DynamicResource Brush.Border}"
+                        BorderThickness="0,1,0,1"
+                        Height="36"
+                        Padding="8,0">
                     <Grid>
-                        <TextBlock Text="실시간 시스템 및 서비스 로그"
-                                   Style="{StaticResource Text.TitleS}"
-                                   VerticalAlignment="Center" />
-                        <Button Content="로그 지우기"
-                                Style="{StaticResource Button.Secondary}"
-                                Command="{Binding ClearLogsCommand}"
-                                Padding="8,3"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Center" />
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150" />
+                            <ColumnDefinition Width="140" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="96" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="서비스" Style="{StaticResource Text.SidebarLabel}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="상태" Style="{StaticResource Text.SidebarLabel}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="세부 정보 및 안내" Style="{StaticResource Text.SidebarLabel}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="3" Text="소유권" Style="{StaticResource Text.SidebarLabel}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                     </Grid>
                 </Border>
 
-                <ListBox Grid.Row="1"
-                         ItemsSource="{Binding Logs}"
+                <ItemsControl ItemsSource="{Binding Services}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="{DynamicResource Brush.Border}"
+                                    BorderThickness="0,0,0,1"
+                                    MinHeight="50"
+                                    Padding="8,10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="96" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DisplayName}"
+                                                   FontSize="13.5"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Brush.TextPrimary}" />
+                                        <TextBlock Text="{Binding ErrorCode}"
+                                                   Visibility="{Binding ErrorCode, Converter={StaticResource StringNotEmptyToVisibility}}"
+                                                   FontFamily="{StaticResource Font.Mono}"
+                                                   FontSize="10.5"
+                                                   Foreground="{DynamicResource Brush.TextMuted}"
+                                                   Margin="0,2,0,0" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Ellipse Width="7" Height="7"
+                                                 Fill="{Binding State, Converter={StaticResource ServiceStateToBrush}}"
+                                                 Margin="0,0,7,0" />
+                                        <TextBlock Text="{Binding StatusText}"
+                                                   FontSize="13"
+                                                   Foreground="{DynamicResource Brush.TextPrimary}" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,12,0">
+                                        <TextBlock Text="{Binding DetailMessage}"
+                                                   FontSize="12.5"
+                                                   Foreground="{DynamicResource Brush.TextSecondary}"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding ActionHint}"
+                                                   Visibility="{Binding ActionHint, Converter={StaticResource StringNotEmptyToVisibility}}"
+                                                   FontSize="11.5"
+                                                   Foreground="{DynamicResource Brush.TextMuted}"
+                                                   Margin="0,2,0,0"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+
+                                    <TextBlock Grid.Column="3"
+                                               Text="{Binding OwnershipLabel}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource Brush.TextMuted}"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- Output Log & Diagnostics Toolbar -->
+            <Grid Margin="0,32,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="Output &amp; Diagnostics" Style="{StaticResource Text.SectionTitle}" VerticalAlignment="Center" />
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ComboBox Width="120"
+                              Height="34"
+                              ItemsSource="{Binding LogServiceFilters}"
+                              SelectedItem="{Binding SelectedLogServiceFilter}"
+                              ToolTip="서비스 필터" />
+                    <ComboBox Width="110"
+                              Height="34"
+                              Margin="6,0,0,0"
+                              ItemsSource="{Binding LogLevelFilters}"
+                              SelectedItem="{Binding SelectedLogLevelFilter}"
+                              ToolTip="로그 레벨 필터" />
+                    <TextBox Style="{StaticResource Input.Hairline}"
+                             Width="170"
+                             Height="34"
+                             MinHeight="34"
+                             Margin="6,0,0,0"
+                             Tag="로그 검색..."
+                             Text="{Binding LogSearchQuery, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button Style="{StaticResource Button.Secondary}"
+                            Height="34"
+                            Margin="8,0,0,0"
+                            Content="복사"
+                            Command="{Binding CopyLogsCommand}" />
+                    <Button Style="{StaticResource Button.Secondary}"
+                            Height="34"
+                            Margin="6,0,0,0"
+                            Content="로그 파일"
+                            Command="{Binding OpenLogFileCommand}" />
+                    <Button Style="{StaticResource Button.Primary}"
+                            Height="34"
+                            Margin="6,0,0,0"
+                            Content="진단 보고서"
+                            Command="{Binding ExportDiagnosticReportCommand}" />
+                    <Button Style="{StaticResource Button.Ghost}"
+                            Height="34"
+                            Margin="4,0,0,0"
+                            Content="지우기"
+                            Command="{Binding ClearLogsCommand}" />
+                </StackPanel>
+            </Grid>
+
+            <Border Background="{DynamicResource Brush.Side}"
+                    BorderBrush="{DynamicResource Brush.Border}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="14,12"
+                    Height="300">
+                <TextBox Text="{Binding FilteredLogText, Mode=OneWay}"
+                         IsReadOnly="True"
                          Background="Transparent"
                          BorderThickness="0"
+                         Foreground="{DynamicResource Brush.TextPrimary}"
                          FontFamily="{StaticResource Font.Mono}"
-                         FontSize="11.5"
-                         Foreground="{DynamicResource Brush.TextSecondary}"
-                         ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                         Padding="8">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding FormattedLine}"
-                                       FontFamily="{StaticResource Font.Mono}"
-                                       FontSize="11.5"
-                                       TextWrapping="NoWrap" />
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Grid>
-        </Border>
-    </Grid>
+                         FontSize="12"
+                         TextWrapping="NoWrap"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto" />
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
 </UserControl>

@@ -11,16 +11,21 @@ public enum ServiceOwnership
 }
 
 /// <summary>
-/// Lifecycle state of an individual local service component.
+/// Full lifecycle state machine for an individual local service component.
 /// </summary>
 public enum ServiceState
 {
     Unknown,
+    NotInstalled,
+    Stopped,
     Checking,
     Starting,
+    Initializing,
     Ready,
     Degraded,
-    Stopped,
+    Unreachable,
+    Failed,
+    Stopping,
     Error
 }
 
@@ -58,9 +63,12 @@ public sealed record ServiceComponentStatus(
     ServiceOwnership Ownership,
     string StatusText,
     string DetailMessage,
-    string? ActionHint = null)
+    string? ActionHint = null,
+    string? ErrorCode = null)
 {
     public bool IsReady => State == ServiceState.Ready;
+
+    public bool IsUsable => State is ServiceState.Ready or ServiceState.Degraded;
 
     public string OwnershipLabel => Ownership switch
     {
@@ -79,8 +87,47 @@ public sealed record ServiceLogEntry(
     ServiceLogLevel Level,
     string Message)
 {
+    public string LevelLabel => Level switch
+    {
+        ServiceLogLevel.Error => "Error",
+        ServiceLogLevel.Warning => "Warning",
+        _ => "Info"
+    };
+
     public string FormattedLine =>
-        $"[{Timestamp.ToLocalTime():HH:mm:ss}] [{Source}] {Message}";
+        $"[{Timestamp.ToLocalTime():HH:mm:ss}] [{LevelLabel}] [{Source}] {Message}";
+}
+
+/// <summary>
+/// Detailed diagnostic check item for Setup Wizard (version, path, running/reachable distinction, official guide).
+/// </summary>
+public sealed record EnvironmentDiagnosticItem(
+    string Key,
+    string Name,
+    bool IsRequired,
+    bool IsInstalled,
+    string DetectedVersion,
+    string RequiredVersion,
+    bool IsRunning,
+    bool IsReachable,
+    string ExecutableOrPath,
+    string? FailureReason,
+    string Resolution,
+    string? OfficialGuideUrl,
+    ServiceState State)
+{
+    public bool IsSatisfied => State is ServiceState.Ready or ServiceState.Degraded;
+
+    public string StatusBadge => State switch
+    {
+        ServiceState.Ready => "정상",
+        ServiceState.Degraded => "부분 준비",
+        ServiceState.NotInstalled => "미설치",
+        ServiceState.Stopped => "설치됨 · 미실행",
+        ServiceState.Unreachable => "연결 불가",
+        ServiceState.Failed or ServiceState.Error => "오류",
+        _ => "확인 필요"
+    };
 }
 
 /// <summary>
@@ -95,7 +142,8 @@ public sealed record EnvironmentCheckSummary(
     bool HasDockerDaemon,
     bool HasOllamaService,
     bool HasBackendRuntime,
-    IReadOnlyList<string> MissingRequirements)
+    IReadOnlyList<string> MissingRequirements,
+    IReadOnlyList<EnvironmentDiagnosticItem>? Diagnostics = null)
 {
     public bool NeedsSetupWizard => !HasApiDirectory || !HasBackendRuntime;
 }

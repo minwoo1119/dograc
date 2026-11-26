@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using Dograc.App.ViewModels;
 
 namespace Dograc.App.Views;
@@ -28,6 +29,16 @@ public partial class MainWindow : Window
 
     private void OnCloseClick(object sender, RoutedEventArgs e)
         => Close();
+
+    private void OnOverflowButtonClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.ContextMenu is not null)
+        {
+            button.ContextMenu.PlacementTarget = button;
+            button.ContextMenu.DataContext = button.DataContext;
+            button.ContextMenu.IsOpen = true;
+        }
+    }
 
     private async void OnContextDocumentsDrop(object sender, DragEventArgs e)
     {

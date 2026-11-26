@@ -175,7 +175,11 @@ class ConversationService:
                 system_prompt=SYSTEM_PROMPT,
             )
         except GenerationModelError as exc:
-            raise GenerationFailedError from exc
+            reason = str(exc)
+            raise GenerationFailedError(
+                "AI 모델에서 답변을 생성하지 못했습니다. Ollama 실행 상태와 선택한 모델을 확인해 주세요.",
+                details={"stage": "generation", "model_name": generation_model.model_name, "reason": reason[:300]},
+            ) from exc
         latency_ms = int((time.perf_counter() - start) * 1000)
 
         assistant_message = Message(

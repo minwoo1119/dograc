@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import status
 
 from app.core.errors import ApplicationError
@@ -22,9 +24,16 @@ class TraceNotFoundError(ApplicationError):
 
 
 class GenerationFailedError(ApplicationError):
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        message: str = "Failed to generate completion from LLM.",
+        *,
+        details: Any | None = None,
+    ) -> None:
         super().__init__(
             code="GENERATION_FAILED",
-            message="Failed to generate completion from LLM.",
+            message=message,
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            stage="generation",
+            details=details,
         )
