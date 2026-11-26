@@ -4,24 +4,109 @@
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="0,0,0,16">
-            <TextBlock Text="{Binding PageTitle}" Style="{StaticResource Text.TitleM}" />
-            <TextBlock Text="{Binding PageDescription}" Style="{StaticResource Text.Caption}" Margin="0,4,0,0" />
-        </StackPanel>
+        <Grid Grid.Row="0" Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock Text="{Binding PageTitle}" Style="{StaticResource Text.TitleM}" />
+                <TextBlock Text="{Binding PageDescription}" Style="{StaticResource Text.Caption}" Margin="0,4,0,0" />
+            </StackPanel>
+            <Button Content="새로고침"
+                    Style="{StaticResource Button.Secondary}"
+                    Command="{Binding RefreshCommand}"
+                    IsEnabled="{Binding IsNotBusy}"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center" />
+        </Grid>
 
+        <!-- Create Workspace Bar -->
         <Border Grid.Row="1"
                 Background="{DynamicResource Brush.Surface}"
                 BorderBrush="{DynamicResource Brush.Border}"
                 BorderThickness="{StaticResource Border.Hairline}"
                 CornerRadius="{StaticResource Radius.Medium}"
-                Padding="24">
-            <TextBlock Text="Workspaces 관리 화면 — Phase 4에서 워크스페이스 목록, 생성 및 삭제 API가 연결됩니다."
-                       Style="{StaticResource Text.BodyM}"
-                       VerticalAlignment="Center"
-                       HorizontalAlignment="Center" />
+                Padding="12"
+                Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0"
+                         Style="{StaticResource Input.Hairline}"
+                         Text="{Binding NewWorkspaceName, UpdateSourceTrigger=PropertyChanged}"
+                         ToolTip="새 워크스페이스 이름 (예: 2026 사내 규정)"
+                         Margin="0,0,8,0" />
+                <Button Grid.Column="1"
+                        Content="+ 새 워크스페이스 만들기"
+                        Style="{StaticResource Button.Primary}"
+                        Command="{Binding CreateWorkspaceCommand}"
+                        IsEnabled="{Binding IsNotBusy}" />
+            </Grid>
         </Border>
+
+        <!-- Feedback / Error Banner -->
+        <StackPanel Grid.Row="2" Margin="0,0,0,10">
+            <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource Text.Caption}" />
+            <Border Visibility="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyToVisibility}}"
+                    Background="{DynamicResource Brush.DangerSubtle}"
+                    BorderBrush="{DynamicResource Brush.Danger}"
+                    BorderThickness="{StaticResource Border.Hairline}"
+                    CornerRadius="{StaticResource Radius.Small}"
+                    Padding="10,6"
+                    Margin="0,6,0,0">
+                <TextBlock Text="{Binding ErrorMessage}"
+                           FontSize="12"
+                           Foreground="{DynamicResource Brush.Danger}"
+                           TextWrapping="Wrap" />
+            </Border>
+        </StackPanel>
+
+        <!-- Workspace List -->
+        <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Workspaces}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="{DynamicResource Brush.Surface}"
+                                BorderBrush="{DynamicResource Brush.Border}"
+                                BorderThickness="{StaticResource Border.Hairline}"
+                                CornerRadius="{StaticResource Radius.Medium}"
+                                Padding="14,12"
+                                Margin="0,0,0,8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" Style="{StaticResource Text.TitleS}" />
+                                    <TextBlock Text="{Binding CreatedAt, StringFormat='생성일: {0:yyyy-MM-dd HH:mm}'}"
+                                               Style="{StaticResource Text.Caption}"
+                                               Margin="0,3,0,0" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Content="선택"
+                                            Style="{StaticResource Button.Primary}"
+                                            Command="{Binding DataContext.SelectWorkspaceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Padding="12,5"
+                                            Margin="0,0,6,0" />
+                                    <Button Content="삭제"
+                                            Style="{StaticResource Button.Secondary}"
+                                            Command="{Binding DataContext.DeleteWorkspaceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Padding="10,5" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
     </Grid>
 </UserControl>
