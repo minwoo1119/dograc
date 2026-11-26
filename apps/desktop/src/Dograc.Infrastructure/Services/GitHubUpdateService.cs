@@ -15,7 +15,7 @@ namespace Dograc.Infrastructure.Services;
 /// </summary>
 public sealed class GitHubUpdateService : IUpdateService
 {
-    public const string DefaultCurrentVersion = "0.1.0";
+    public const string DefaultCurrentVersion = "0.2.0";
     public const string GithubRepoUrl = "https://github.com/minwoo1119/dograc";
     public const string ReleasesApiUrl = "https://api.github.com/repos/minwoo1119/dograc/releases/latest";
     public const string ReleasesPageUrl = "https://github.com/minwoo1119/dograc/releases/latest";
