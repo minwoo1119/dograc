@@ -439,12 +439,21 @@ public sealed class LocalServiceManager : IServiceManager
 
     private void EnsureEnvFile()
     {
-        if (!File.Exists(Options.EnvFilePath) && File.Exists(Options.EnvExampleFilePath))
+        var isPackaged = ProjectRootResolver.IsPackagedInstall(Options.ProjectRoot);
+        var targetEnvPath = isPackaged ? Options.UserEnvFilePath : Options.EnvFilePath;
+
+        if (!File.Exists(targetEnvPath) && File.Exists(Options.EnvExampleFilePath))
         {
             try
             {
-                File.Copy(Options.EnvExampleFilePath, Options.EnvFilePath);
-                AppendLog("System", ServiceLogLevel.Info, ".env 파일이 없어 .env.example에서 자동 생성했습니다.");
+                var dir = Path.GetDirectoryName(targetEnvPath);
+                if (!string.IsNullOrWhiteSpace(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+
+                File.Copy(Options.EnvExampleFilePath, targetEnvPath);
+                AppendLog("System", ServiceLogLevel.Info, $".env 파일이 없어 .env.example에서 자동 생성했습니다 ({targetEnvPath}).");
             }
             catch (Exception ex)
             {
@@ -774,12 +783,28 @@ public sealed class LocalServiceManager : IServiceManager
 
         try
         {
-            AppendLog("API", ServiceLogLevel.Info, $"FastAPI 백엔드 시작: {launchSpec.Value.Description}");
+            var isPackaged = ProjectRootResolver.IsPackagedInstall(Options.ProjectRoot);
+            Directory.CreateDirectory(Options.UserDataDirectory);
+            var envVars = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["DOGRAC_DATA_DIR"] = Options.UserDataDirectory,
+                ["DOGRAC_ENV_FILE"] = isPackaged ? Options.UserEnvFilePath : Options.EnvFilePath,
+                ["PYTHONUTF8"] = "1",
+                ["PYTHONIOENCODING"] = "utf-8"
+            };
+            if (isPackaged)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(Options.UserVenvDirectory)!);
+                envVars["UV_PROJECT_ENVIRONMENT"] = Options.UserVenvDirectory;
+            }
+
+            AppendLog("API", ServiceLogLevel.Info, $"FastAPI 백엔드 시작: {launchSpec.Value.Description} (DataDir: {Options.UserDataDirectory})");
             _managedBackendProcess = _processRunner.StartLongRunning(
                 launchSpec.Value.FileName,
                 launchSpec.Value.Arguments,
                 Options.ApiDirectory,
-                line => AppendLog("API", ServiceLogLevel.Info, line));
+                line => AppendLog("API", ServiceLogLevel.Info, line),
+                envVars);
             _backendOwnership = ServiceOwnership.Managed;
             AppendLog("API", ServiceLogLevel.Info, $"FastAPI 프로세스 시작됨 (PID: {_managedBackendProcess.ProcessId})");
             return true;
@@ -828,6 +853,14 @@ public sealed class LocalServiceManager : IServiceManager
                 venvPython,
                 $"-m uvicorn app.main:app --host {Options.ApiHost} --port {Options.ApiPort}",
                 $"가상환경 Python ({Path.GetFileName(venvPython)})");
+        }
+
+        if (File.Exists(Options.UserVenvPythonPath))
+        {
+            return (
+                Options.UserVenvPythonPath,
+                $"-m uvicorn app.main:app --host {Options.ApiHost} --port {Options.ApiPort}",
+                $"사용자 영속 가상환경 Python ({Options.UserVenvDirectory})");
         }
 
         var uvCmd = _processRunner.FindExecutable("uv");

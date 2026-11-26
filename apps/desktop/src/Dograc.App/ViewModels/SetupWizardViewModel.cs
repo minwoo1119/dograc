@@ -47,15 +47,35 @@ public sealed partial class SetupWizardViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(CanStartServices))]
     [NotifyPropertyChangedFor(nameof(StartButtonLabel))]
     [NotifyPropertyChangedFor(nameof(StartButtonTooltip))]
+    [NotifyPropertyChangedFor(nameof(AppLaunchStatusLabel))]
+    [NotifyPropertyChangedFor(nameof(RagServiceStatusLabel))]
     private bool _areRequiredItemsReady;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RagServiceStatusLabel))]
+    private bool _isRagFullyReady;
 
     public bool CanStartServices => IsNotRetrying && AreRequiredItemsReady;
 
-    public string StartButtonLabel => AreRequiredItemsReady ? "서비스 시작" : "필수 항목 구성 필요";
+    public string AppLaunchStatusLabel => AreRequiredItemsReady
+        ? "앱 · 백엔드 실행 가능"
+        : "앱 실행 불가 (필수 항목 미구성)";
 
-    public string StartButtonTooltip => AreRequiredItemsReady
-        ? "필수 항목이 모두 준비되었습니다. 클릭하여 로컬 서비스를 시작합니다."
-        : "필수 구성 요소가 아직 준비되지 않았습니다. 위 안내를 완료한 뒤 [다시 검사]를 눌러 주세요.";
+    public string RagServiceStatusLabel => !AreRequiredItemsReady
+        ? "RAG 질의응답 불가 (백엔드 필수 구성 필요)"
+        : IsRagFullyReady
+            ? "RAG 질의응답 즉시 사용 가능"
+            : "문서 관리 가능 · AI 답변 생성은 Ollama 실행 필요";
+
+    public string StartButtonLabel => AreRequiredItemsReady
+        ? (IsRagFullyReady ? "서비스 시작" : "백엔드만 시작")
+        : "필수 항목 구성 필요";
+
+    public string StartButtonTooltip => !AreRequiredItemsReady
+        ? "필수 구성 요소가 아직 준비되지 않았습니다. 위 안내를 완료한 뒤 [다시 검사]를 눌러 주세요."
+        : IsRagFullyReady
+            ? "필수 구성 요소와 로컬 AI(Ollama)가 모두 준비되었습니다. 클릭하여 서비스를 시작합니다."
+            : "앱과 백엔드 서버(문서 업로드·검색)는 바로 시작할 수 있습니다. AI 답변 생성을 위해 Ollama를 별도로 실행해 주세요.";
 
     partial void OnIsRetryingChanged(bool value)
     {
@@ -132,13 +152,19 @@ public sealed partial class SetupWizardViewModel : ObservableObject
 
         var missingRequired = RequiredItems.Count(d => !d.IsSatisfied);
         var optionalWarnings = OptionalItems.Count(d => !d.IsSatisfied);
+        var ollamaReady = OptionalItems.Any(d =>
+            string.Equals(d.Key, "ollama", StringComparison.OrdinalIgnoreCase) && d.IsSatisfied);
+
         AreRequiredItemsReady = missingRequired == 0;
+        IsRagFullyReady = AreRequiredItemsReady && ollamaReady;
 
         SummaryMessage = missingRequired > 0
-            ? $"필수 구성 요소 {missingRequired}건이 준비되지 않아 서비스를 시작할 수 없습니다. 아래 해결 방법을 완료한 뒤 [다시 검사]를 눌러 주세요."
-            : optionalWarnings > 0
-                ? $"필수 구성 요소는 모두 준비되었습니다 (선택적 권장 항목 {optionalWarnings}건 미실행). 지금 바로 서비스를 시작할 수 있습니다."
-                : "모든 필수 및 선택적 권장 구성 요소가 정상 준비되었습니다.";
+            ? $"필수 구성 요소 {missingRequired}건이 준비되지 않아 앱 백엔드를 시작할 수 없습니다. 아래 해결 방법을 완료한 뒤 [다시 검사]를 눌러 주세요."
+            : !ollamaReady
+                ? $"앱·백엔드 실행 필수 항목은 준비되었으나, Ollama가 미실행 상태입니다. 지금 시작하면 문서 관리는 가능하지만 AI 답변 생성은 Ollama 실행 후 사용할 수 있습니다."
+                : optionalWarnings > 0
+                    ? $"앱 실행 및 RAG 질의응답이 가능합니다 (Docker 미실행 시 로컬 영속 저장소 모드로 동작)."
+                    : "앱 실행 및 전체 로컬 RAG 인프라·AI 모델이 모두 정상 준비되었습니다.";
     }
 
     [RelayCommand]

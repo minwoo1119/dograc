@@ -275,13 +275,13 @@
             </Grid>
         </ScrollViewer>
 
-        <!-- Structured ErrorCard pinned above Composer so it is NEVER clipped or hidden by Chat Composer -->
+        <!-- Structured ErrorCard pinned above Composer with compact max height for small windows -->
         <Border Grid.Row="2"
                 Visibility="{Binding ActiveError, Converter={StaticResource NullToVisibility}}"
                 Background="{DynamicResource Brush.Canvas}"
-                Padding="28,8,28,4">
+                Padding="28,6,28,4">
             <ScrollViewer MaxWidth="720"
-                          MaxHeight="280"
+                          MaxHeight="195"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <controls:ErrorCardControl Error="{Binding ActiveError}"

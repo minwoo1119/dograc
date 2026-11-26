@@ -9,6 +9,7 @@
                 <ResourceDictionary Source="Themes/Tokens/Typography.xaml" />
                 <ResourceDictionary Source="Themes/Tokens/SpacingAndBorders.xaml" />
                 <ResourceDictionary Source="Themes/Tokens/Icons.xaml" />
+                <ResourceDictionary Source="Themes/Strings/Strings.ko-KR.xaml" />
                 <ResourceDictionary Source="Themes/Styles/Controls.xaml" />
             </ResourceDictionary.MergedDictionaries>
 

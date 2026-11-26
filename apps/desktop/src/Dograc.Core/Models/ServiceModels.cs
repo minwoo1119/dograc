@@ -157,7 +157,8 @@ public sealed record ServiceRuntimeOptions(
     int ApiPort = 8000,
     string OllamaHost = "127.0.0.1",
     int OllamaPort = 11434,
-    int StartupTimeoutSeconds = 35)
+    int StartupTimeoutSeconds = 35,
+    string? DataDirectoryOverride = null)
 {
     public string ApiBaseUrl => $"http://{ApiHost}:{ApiPort}";
     public string ApiHealthLiveUrl => $"{ApiBaseUrl}/api/v1/health/live";
@@ -167,4 +168,20 @@ public sealed record ServiceRuntimeOptions(
     public string ComposeFilePath => Path.Combine(ProjectRoot, "infra", "compose.yaml");
     public string EnvFilePath => Path.Combine(ProjectRoot, ".env");
     public string EnvExampleFilePath => Path.Combine(ProjectRoot, ".env.example");
+
+    public string UserRootDirectory => !string.IsNullOrWhiteSpace(DataDirectoryOverride)
+        ? Path.GetFullPath(DataDirectoryOverride)
+        : Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "dograc");
+
+    public string UserDataDirectory => Environment.GetEnvironmentVariable("DOGRAC_DATA_DIR") is { Length: > 0 } envData
+        ? Path.GetFullPath(envData)
+        : Path.Combine(UserRootDirectory, "data");
+
+    public string UserEnvFilePath => Path.Combine(UserRootDirectory, ".env");
+
+    public string UserVenvDirectory => Path.Combine(UserRootDirectory, "runtime", ".venv");
+
+    public string UserVenvPythonPath => Path.Combine(UserVenvDirectory, "Scripts", "python.exe");
 }

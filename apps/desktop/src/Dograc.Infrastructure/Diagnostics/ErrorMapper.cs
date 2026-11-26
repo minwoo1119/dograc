@@ -365,7 +365,7 @@ public sealed class ErrorMapper : IErrorMapper
         var rawLower = $"{exception.Message} {exception.RawDetails}".ToLowerInvariant();
 
         // Document parsing & indexing pipeline stages
-        if (codeUpper is "DOCUMENT_PARSE_FAILED" or "DOCUMENT_PROCESSING_FAILED" or "UNSUPPORTED_FILE_TYPE" or "FILE_TOO_LARGE" or "EMPTY_FILE")
+        if (codeUpper is "DOCUMENT_PARSE_FAILED" or "DOCUMENT_PROCESSING_FAILED" or "UNSUPPORTED_FILE_TYPE" or "FILE_TOO_LARGE" or "EMPTY_FILE" or "DOCUMENT_ALREADY_PROCESSING" or "DOCUMENT_ENCODING_ERROR" or "DOCUMENT_ENCRYPTED_PDF" or "DOCUMENT_EMPTY_TEXT" or "DOCUMENT_PDF_PARSE_FAILED" or "DOCUMENT_TXT_PARSE_FAILED" or "DOCUMENT_PROCESS_INTERRUPTED")
         {
             return MapDocumentApiFailure(codeUpper, exception.PipelineStage, exception.Message, exception.RawDetails, enrichedContext, tech, now, cid);
         }
@@ -618,8 +618,35 @@ public sealed class ErrorMapper : IErrorMapper
         DateTimeOffset now,
         string cid)
     {
-        var detailsLower = $"{message} {rawDetails}".ToLowerInvariant();
+        var detailsLower = $"{message} {rawDetails} {context.Operation}".ToLowerInvariant();
         var stageNorm = (stage ?? string.Empty).ToLowerInvariant();
+        var isTxtFile = detailsLower.Contains(".txt") || codeUpper is "DOCUMENT_ENCODING_ERROR" or "DOCUMENT_TXT_PARSE_FAILED" || detailsLower.Contains("utf-8") || detailsLower.Contains("인코딩");
+
+        if (codeUpper == "DOCUMENT_ALREADY_PROCESSING")
+        {
+            return new ApplicationError(
+                "DOC-005", ErrorSeverity.Warning, ErrorCategory.DocumentIndexing,
+                "이미 색인 처리가 진행 중인 문서입니다",
+                "동일 문서에 대한 색인 작업이 현재 백엔드에서 실행 중입니다.",
+                "중복 재색인 요청이 감지되어 데이터 충돌을 방지하기 위해 차단되었습니다.", true,
+                "기존 색인 작업은 안전하게 계속 진행됩니다.",
+                "잠시 기다린 뒤 [새로고침]을 눌러 완료 상태를 확인해 주세요.",
+                [new(RecoveryActionKind.RecheckConnection, "상태 새로고침", IsPrimary: true)],
+                tech, now, cid, context, IsRetryable: false, PipelineStage: "processing");
+        }
+
+        if (codeUpper == "DOCUMENT_PROCESS_INTERRUPTED")
+        {
+            return new ApplicationError(
+                "IDX-007", ErrorSeverity.Warning, ErrorCategory.DocumentIndexing,
+                "문서 색인 실패 [단계: 처리 중단]",
+                "이전 실행 중 백엔드 서버가 비정상 종료되어 색인이 완료되지 않았습니다.",
+                "색인 진행 중 앱 또는 백엔드 프로세스가 강제 종료되어 안전하게 실패 상태로 전환되었습니다.", true,
+                "해당 문서는 아직 검색에 반영되지 않았습니다.",
+                "[색인 다시 시작]을 눌러 처음부터 안전하게 재색인해 주세요.",
+                [new(RecoveryActionKind.ReindexDocument, "색인 다시 시작", IsPrimary: true)],
+                tech, now, cid, context, IsRetryable: true, PipelineStage: "처리 중단");
+        }
 
         if (codeUpper == "UNSUPPORTED_FILE_TYPE")
         {
@@ -660,15 +687,21 @@ public sealed class ErrorMapper : IErrorMapper
                 tech, now, cid, context, IsRetryable: false, PipelineStage: "텍스트 추출");
         }
 
-        if (stageNorm == "chunking" || detailsLower.Contains("document_empty_text") || detailsLower.Contains("ocr") || detailsLower.Contains("빈 문서"))
+        if (stageNorm == "chunking" || codeUpper == "DOCUMENT_EMPTY_TEXT" || detailsLower.Contains("document_empty_text") || detailsLower.Contains("ocr") || detailsLower.Contains("빈 문서"))
         {
+            var emptyCause = isTxtFile
+                ? "텍스트 파일에 공백/줄바꿈 외에 색인할 유효한 본문이 없습니다."
+                : "텍스트 레이어가 없는 스캔 이미지 PDF(OCR 필요)이거나 내용이 비어 있을 수 있습니다.";
+            var emptyResolution = isTxtFile
+                ? "내용이 포함된 UTF-8 텍스트 파일인지 확인한 뒤 [파일 다시 선택]을 눌러 주세요."
+                : "텍스트 선택이 가능한 PDF로 OCR 변환하거나 다른 파일을 선택해 주세요.";
             return new ApplicationError(
                 "IDX-002", ErrorSeverity.Error, ErrorCategory.DocumentIndexing,
                 "문서 색인 실패 [단계: Chunking]",
                 "문서에서 색인할 텍스트를 찾지 못했습니다.",
-                "텍스트 레이어가 없는 스캔 이미지 PDF(OCR 필요)이거나 내용이 비어 있을 수 있습니다.", false,
+                emptyCause, isTxtFile,
                 "청크가 생성되지 않아 AI 검색에 활용될 수 없습니다.",
-                "텍스트가 포함된 PDF로 OCR 변환하거나 다른 파일을 선택해 주세요.",
+                emptyResolution,
                 [new(RecoveryActionKind.ReselectFile, "파일 다시 선택", IsPrimary: true)],
                 tech, now, cid, context, IsRetryable: false, PipelineStage: "Chunking");
         }
@@ -723,20 +756,37 @@ public sealed class ErrorMapper : IErrorMapper
                 tech, now, cid, context, IsRetryable: true, PipelineStage: "DB 저장");
         }
 
-        // Default text extraction / parse error
+        // TXT encoding / parse error (clearly distinguished from PDF corruption)
+        if (isTxtFile)
+        {
+            return new ApplicationError(
+                "IDX-006", ErrorSeverity.Error, ErrorCategory.DocumentIndexing,
+                "문서 색인 실패 [단계: TXT 인코딩]",
+                string.IsNullOrWhiteSpace(message) ? "텍스트 파일(.txt)을 UTF-8로 읽지 못했습니다." : message,
+                "텍스트 파일이 UTF-8이 아닌 인코딩(예: Windows 기본 CP949/EUC-KR)으로 저장되었거나 바이너리 데이터가 포함되어 있을 수 있습니다.", false,
+                "해당 문서는 검색 색인에서 제외되었습니다.",
+                "메모장 또는 코드 편집기에서 [다른 이름으로 저장] → 인코딩을 'UTF-8'로 변경해 저장한 뒤 [파일 다시 선택]을 눌러 주세요.",
+                [
+                    new(RecoveryActionKind.ReselectFile, "파일 다시 선택", IsPrimary: true),
+                    new(RecoveryActionKind.ViewErrorDetails, "상세 정보")
+                ],
+                tech, now, cid, context, IsRetryable: false, PipelineStage: "TXT 인코딩");
+        }
+
+        // PDF text extraction / corruption error
         return new ApplicationError(
             "IDX-001", ErrorSeverity.Error, ErrorCategory.DocumentIndexing,
-            "문서 색인 실패 [단계: 텍스트 추출]",
-            string.IsNullOrWhiteSpace(message) ? "문서에서 텍스트를 추출하지 못했습니다." : message,
-            "손상된 PDF 파일이거나 지원하지 않는 인코딩(비 UTF-8)일 수 있습니다.", false,
+            "문서 색인 실패 [단계: PDF 텍스트 추출]",
+            string.IsNullOrWhiteSpace(message) ? "PDF 문서에서 텍스트를 추출하지 못했습니다." : message,
+            "PDF 파일 구조가 손상되었거나 비표준 압축·폰트 스트림을 포함하고 있을 수 있습니다.", false,
             "해당 문서는 검색 색인에서 제외되었습니다.",
-            "파일이 정상적으로 열리는지 확인한 뒤 [파일 다시 선택] 또는 [색인 다시 시작]을 진행해 주세요.",
+            "PDF 뷰어에서 파일이 정상 열리는지 확인하고, 'PDF로 다시 저장/인쇄'한 뒤 [파일 다시 선택] 또는 [색인 다시 시작]을 진행해 주세요.",
             [
                 new(RecoveryActionKind.ReselectFile, "파일 다시 선택", IsPrimary: true),
                 new(RecoveryActionKind.ReindexDocument, "색인 다시 시작"),
                 new(RecoveryActionKind.ViewErrorDetails, "상세 정보")
             ],
-            tech, now, cid, context, IsRetryable: true, PipelineStage: "텍스트 추출");
+            tech, now, cid, context, IsRetryable: true, PipelineStage: "PDF 텍스트 추출");
     }
 
     private static string BuildTechnicalDetails(Exception ex, ErrorContext ctx, string cid)

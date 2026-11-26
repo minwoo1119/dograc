@@ -11,6 +11,7 @@ from app.document_processing.chunking import RecursiveCharacterChunker
 from app.document_processing.parsers import ParserRegistry
 from app.document_processing.protocol import DocumentParseError
 from app.documents.errors import (
+    DocumentAlreadyProcessingError,
     DocumentNotFoundError,
     DocumentParseFailedError,
     DocumentProcessingError,
@@ -52,6 +53,8 @@ class DocumentProcessingService:
         )
         if document is None:
             raise DocumentNotFoundError
+        if document.status == DocumentStatus.PROCESSING:
+            raise DocumentAlreadyProcessingError
         workspace_id = document.workspace_id
         persisted_document_id = document.id
         version = max(document.versions, key=lambda item: item.version_number)
@@ -64,7 +67,7 @@ class DocumentProcessingService:
             content = await self._file_storage.get(object_key=version.object_key)
         except FileStorageError as exc:
             document.status = DocumentStatus.FAILED
-            document.failure_code = "DOCUMENT_PARSE_FAILED"
+            document.failure_code = "STORAGE_READ_FAILED"
             await self._session.commit()
             raise DocumentParseFailedError(
                 "스토리지에서 원본 문서를 읽지 못했습니다.",
@@ -77,19 +80,26 @@ class DocumentProcessingService:
             parser = self._parser_registry.for_media_type(document.media_type)
             parsed = await asyncio.to_thread(parser.parse, content)
         except DocumentParseError as exc:
-            document.status = DocumentStatus.FAILED
-            document.failure_code = "DOCUMENT_PARSE_FAILED"
-            await self._session.commit()
             raw_reason = str(exc)
             if "Encrypted" in raw_reason:
                 stage_code = "DOCUMENT_ENCRYPTED_PDF"
+                stored_code = "DOCUMENT_ENCRYPTED_PDF"
                 msg = "암호로 보호된 PDF는 텍스트를 추출할 수 없습니다. 암호를 해제한 뒤 다시 업로드해 주세요."
             elif "UTF-8" in raw_reason:
                 stage_code = "DOCUMENT_ENCODING_ERROR"
+                stored_code = "DOCUMENT_ENCODING_ERROR"
                 msg = "지원하지 않는 문자 인코딩입니다. UTF-8로 저장한 텍스트 파일을 업로드해 주세요."
             else:
                 stage_code = "DOCUMENT_PARSE_FAILED"
-                msg = "문서에서 텍스트를 추출하지 못했습니다. 손상된 파일인지 확인해 주세요."
+                stored_code = "DOCUMENT_PARSE_FAILED"
+                msg = (
+                    "PDF 문서에서 텍스트를 추출하지 못했습니다. 손상된 PDF 파일인지 확인해 주세요."
+                    if document.media_type == "application/pdf"
+                    else "텍스트 문서에서 내용을 추출하지 못했습니다. 파일 형식을 확인해 주세요."
+                )
+            document.status = DocumentStatus.FAILED
+            document.failure_code = stored_code
+            await self._session.commit()
             raise DocumentParseFailedError(
                 msg,
                 stage="text_extraction",
@@ -129,10 +139,15 @@ class DocumentProcessingService:
 
         if chunk_index == 0:
             document.status = DocumentStatus.FAILED
-            document.failure_code = "DOCUMENT_PARSE_FAILED"
+            document.failure_code = "DOCUMENT_EMPTY_TEXT"
             await self._session.commit()
+            empty_msg = (
+                "텍스트 파일에 색인할 내용이 없습니다. 공백 외의 본문이 포함된 UTF-8 파일인지 확인해 주세요."
+                if document.media_type == "text/plain"
+                else "PDF에서 색인할 텍스트를 찾지 못했습니다. 빈 문서이거나 OCR이 필요한 스캔 이미지 PDF일 수 있습니다."
+            )
             raise DocumentParseFailedError(
-                "문서에서 색인할 텍스트를 찾지 못했습니다. 빈 문서이거나 OCR이 필요한 스캔 이미지 PDF일 수 있습니다.",
+                empty_msg,
                 stage="chunking",
                 details={"stage": "chunking", "stage_code": "DOCUMENT_EMPTY_TEXT"},
             )
@@ -180,7 +195,12 @@ class DocumentProcessingService:
             document.status = DocumentStatus.READY
             document.failure_code = None
             await self._session.commit()
-            await self._session.refresh(document)
+            reloaded = await self._repository.get_for_owner(
+                document_id=persisted_document_id,
+                owner_id=owner_id,
+            )
+            if reloaded is not None:
+                document = reloaded
         except (SQLAlchemyError, EmbeddingModelError, VectorStoreError) as exc:
             await self._session.rollback()
             try:
