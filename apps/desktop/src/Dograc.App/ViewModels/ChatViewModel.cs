@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Dograc.Core.Errors;
 using Dograc.Core.Models;
 using Dograc.Core.Parsing;
 using Dograc.Core.Services;
@@ -10,23 +11,39 @@ using Dograc.Core.Services;
 namespace Dograc.App.ViewModels;
 
 /// <summary>
-/// Display model for a single chat message bubble with parsed citations and Evidence panel commands.
+/// Display model for a single chat message with parsed citations, Sources summary, copy/regenerate actions, and Evidence panel linking.
 /// </summary>
 public sealed class ChatMessageItemViewModel
 {
     public ChatMessageItemViewModel(
         MessageDto dto,
-        Action<EvidenceSelectionRequest> onEvidenceRequested)
+        string modelName,
+        bool canRegenerate,
+        Action<EvidenceSelectionRequest> onEvidenceRequested,
+        Action<string> onCopyRequested,
+        Action? onRegenerateRequested = null)
     {
         Id = dto.Id;
         Role = dto.Role;
         Content = dto.Content;
         CreatedAt = dto.CreatedAt;
         TraceId = dto.TraceId;
+        ModelName = modelName;
+        CanRegenerate = canRegenerate;
         IsUser = string.Equals(dto.Role, "user", StringComparison.OrdinalIgnoreCase);
         IsAssistant = !IsUser;
         SenderLabel = IsUser ? "사용자" : "dograc";
+        TimestampLabel = dto.CreatedAt.LocalDateTime.ToString("HH:mm");
         Citations = IsAssistant ? CitationParser.ExtractUniqueCitations(dto.Content) : [];
+
+        var distinctDocs = Citations
+            .Select(c => c.FileName)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+
+        SourcesSummaryLabel = Citations.Count > 0
+            ? $"참고 문서 {distinctDocs}개 · 인용 {Citations.Count}개"
+            : "답변 근거 확인";
 
         OpenCitationCommand = new RelayCommand<CitationReference>(citation =>
         {
@@ -43,6 +60,10 @@ public sealed class ChatMessageItemViewModel
                 onEvidenceRequested(new EvidenceSelectionRequest(TraceId.Value));
             }
         });
+
+        CopyCommand = new RelayCommand(() => onCopyRequested(Content));
+
+        RegenerateCommand = new RelayCommand(() => onRegenerateRequested?.Invoke(), () => CanRegenerate);
     }
 
     public Guid Id { get; }
@@ -50,6 +71,8 @@ public sealed class ChatMessageItemViewModel
     public bool IsUser { get; }
     public bool IsAssistant { get; }
     public string SenderLabel { get; }
+    public string ModelName { get; }
+    public string TimestampLabel { get; }
     public string Content { get; }
     public DateTimeOffset CreatedAt { get; }
     public Guid? TraceId { get; }
@@ -57,20 +80,26 @@ public sealed class ChatMessageItemViewModel
     public IReadOnlyList<CitationReference> Citations { get; }
     public bool HasCitations => Citations.Count > 0;
     public bool ShowAssistantFooter => IsAssistant && (HasCitations || HasTrace);
+    public string SourcesSummaryLabel { get; }
+    public bool CanRegenerate { get; }
 
     public ICommand OpenCitationCommand { get; }
     public ICommand OpenTraceCommand { get; }
+    public ICommand CopyCommand { get; }
+    public ICommand RegenerateCommand { get; }
 }
 
 /// <summary>
 /// ViewModel for the central AI Chat Workspace with conversation loading, model selection,
-/// optimistic messaging, cancellation (stop), retry/restore, and citation-to-evidence linking.
+/// optimistic messaging, cancellation (stop), retry/restore, regenerate, copy, and citation-to-evidence linking.
 /// </summary>
 public sealed partial class ChatViewModel : PageViewModelBase
 {
     private readonly IDogracApiClient _apiClient;
     private readonly IWorkspaceContext _workspaceContext;
     private readonly ISettingsStore _settingsStore;
+    private readonly IErrorHandlingService? _errorHandling;
+    private readonly IRecoveryActionService? _recoveryService;
 
     private Guid? _loadedConversationId;
     private CancellationTokenSource? _loadCts;
@@ -78,13 +107,15 @@ public sealed partial class ChatViewModel : PageViewModelBase
     private bool _isSyncingSettings;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowNoIndexedDocsHint))]
+    [NotifyPropertyChangedFor(nameof(SendButtonTooltip))]
     private bool _hasWorkspace;
 
     [ObservableProperty]
     private string _activeWorkspaceName = "워크스페이스 미선택";
 
     [ObservableProperty]
-    private string _activeConversationTitle = "새 대화 시작";
+    private string _activeConversationTitle = "새 대화";
 
     [ObservableProperty]
     private string _inputText = string.Empty;
@@ -96,10 +127,19 @@ public sealed partial class ChatViewModel : PageViewModelBase
     private string _ollamaEndpointUrl = "http://localhost:11434/v1";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowNoIndexedDocsHint))]
+    private int _indexedDocumentCount;
+
+    [ObservableProperty]
+    private string _indexedDocumentsLabel = "색인된 문서 없음";
+
+    [ObservableProperty]
     private bool _isLoadingHistory;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNotGenerating))]
+    [NotifyPropertyChangedFor(nameof(ShowNoIndexedDocsHint))]
+    [NotifyPropertyChangedFor(nameof(SendButtonTooltip))]
     private bool _isGenerating;
 
     [ObservableProperty]
@@ -109,7 +149,13 @@ public sealed partial class ChatViewModel : PageViewModelBase
     private string? _errorMessage;
 
     [ObservableProperty]
+    private ApplicationError? _activeError;
+
+    [ObservableProperty]
     private string? _failedQuestion;
+
+    [ObservableProperty]
+    private string? _statusNotice;
 
     [ObservableProperty]
     private bool _isEmptyThread = true;
@@ -117,11 +163,15 @@ public sealed partial class ChatViewModel : PageViewModelBase
     public ChatViewModel(
         IDogracApiClient apiClient,
         IWorkspaceContext workspaceContext,
-        ISettingsStore settingsStore)
+        ISettingsStore settingsStore,
+        IErrorHandlingService? errorHandling = null,
+        IRecoveryActionService? recoveryService = null)
     {
         _apiClient = apiClient;
         _workspaceContext = workspaceContext;
         _settingsStore = settingsStore;
+        _errorHandling = errorHandling;
+        _recoveryService = recoveryService;
 
         AvailableModels =
         [
@@ -177,6 +227,47 @@ public sealed partial class ChatViewModel : PageViewModelBase
 
     public bool IsNotGenerating => !IsGenerating;
 
+    public bool ShowNoIndexedDocsHint => HasWorkspace && IndexedDocumentCount == 0 && !IsGenerating;
+
+    public string SendButtonTooltip => !HasWorkspace
+        ? "워크스페이스를 먼저 선택해 주세요"
+        : IsGenerating
+            ? "답변을 생성하고 있습니다"
+            : "전송 (Enter)";
+
+    [RelayCommand]
+    private async Task ExecuteErrorActionAsync(RecoveryActionDescriptor? action)
+    {
+        if (action is null)
+        {
+            return;
+        }
+
+        if (action.Kind == RecoveryActionKind.RestoreInput)
+        {
+            RestoreFailedInput();
+            return;
+        }
+
+        if (action.Kind == RecoveryActionKind.Retry)
+        {
+            await RetryFailedAsync();
+            return;
+        }
+
+        if (_recoveryService is not null)
+        {
+            await _recoveryService.ExecuteAsync(action, ActiveError, RetryFailedAsync);
+        }
+    }
+
+    [RelayCommand]
+    private void DismissError()
+    {
+        ActiveError = null;
+        ErrorMessage = null;
+    }
+
     public ObservableCollection<string> AvailableModels { get; }
 
     public ObservableCollection<ChatMessageItemViewModel> Messages { get; } = [];
@@ -184,6 +275,10 @@ public sealed partial class ChatViewModel : PageViewModelBase
     public event EventHandler<EvidenceSelectionRequest>? EvidenceRequested;
 
     public event EventHandler? MessagesUpdated;
+
+    public event EventHandler? AttachDocumentRequested;
+
+    public event EventHandler? OpenDocumentsTabRequested;
 
     [RelayCommand]
     private async Task SendMessageAsync()
@@ -228,6 +323,18 @@ public sealed partial class ChatViewModel : PageViewModelBase
     }
 
     [RelayCommand]
+    private void RequestAttachDocument()
+    {
+        AttachDocumentRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    [RelayCommand]
+    private void RequestOpenDocumentsTab()
+    {
+        OpenDocumentsTabRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    [RelayCommand]
     private void InsertMarkdownSnippet(string? snippet)
     {
         if (string.IsNullOrEmpty(snippet))
@@ -236,6 +343,35 @@ public sealed partial class ChatViewModel : PageViewModelBase
         }
 
         InputText = string.IsNullOrEmpty(InputText) ? snippet : $"{InputText}{snippet}";
+    }
+
+    private void CopyMessageText(string content)
+    {
+        try
+        {
+            Clipboard.SetText(content);
+            StatusNotice = "답변을 클립보드에 복사했습니다.";
+        }
+        catch
+        {
+            StatusNotice = "클립보드 복사에 실패했습니다.";
+        }
+    }
+
+    private async Task RegenerateLastQuestionAsync()
+    {
+        if (IsGenerating)
+        {
+            return;
+        }
+
+        var lastUser = Messages.LastOrDefault(m => m.IsUser);
+        if (lastUser is null || string.IsNullOrWhiteSpace(lastUser.Content))
+        {
+            return;
+        }
+
+        await ExecuteSendAsync(lastUser.Content);
     }
 
     private async Task ExecuteSendAsync(string question)
@@ -248,7 +384,9 @@ public sealed partial class ChatViewModel : PageViewModelBase
         IsGenerating = true;
         OptimisticUserMessage = question;
         ErrorMessage = null;
+        ActiveError = null;
         FailedQuestion = null;
+        StatusNotice = null;
         UpdateEmptyState();
         MessagesUpdated?.Invoke(this, EventArgs.Empty);
 
@@ -274,17 +412,29 @@ public sealed partial class ChatViewModel : PageViewModelBase
                 EvidenceRequested?.Invoke(this, new EvidenceSelectionRequest(assistantReply.TraceId.Value));
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException oce)
         {
             OptimisticUserMessage = null;
             FailedQuestion = question;
-            ErrorMessage = "응답 생성이 중지되었습니다. 다시 시도하거나 입력창으로 복원할 수 있습니다.";
+            var ctx = new ErrorContext("Chat", "Ollama", "답변 생성", Metadata: new Dictionary<string, string> { ["timeout_seconds"] = "120" });
+            ActiveError = _errorHandling?.Handle(oce, ctx, RetryFailedAsync, notifyToast: false)
+                ?? new ApplicationError(
+                    "CHAT-002", ErrorSeverity.Information, ErrorCategory.RagChat,
+                    "답변 생성이 중지되었습니다", "사용자의 요청으로 응답 생성을 중단했습니다.",
+                    "사용자가 중지 버튼을 눌렀습니다.", true,
+                    "입력하신 질문은 안전하게 보존되었습니다.",
+                    "[다시 시도] 또는 [입력창 복원]으로 이어서 질문할 수 있습니다.",
+                    [new(RecoveryActionKind.Retry, "다시 시도", true), new(RecoveryActionKind.RestoreInput, "입력창 복원")],
+                    oce.Message, DateTimeOffset.Now, ctx.ResolvedCorrelationId, ctx, IsRetryable: true);
+            ErrorMessage = ActiveError.Description;
         }
         catch (Exception ex)
         {
             OptimisticUserMessage = null;
             FailedQuestion = question;
-            ErrorMessage = ex.Message;
+            var ctx = new ErrorContext("Chat", "API", "답변 생성");
+            ActiveError = _errorHandling?.Handle(ex, ctx, RetryFailedAsync, notifyToast: true);
+            ErrorMessage = ActiveError?.Description ?? ex.Message;
         }
         finally
         {
@@ -301,7 +451,15 @@ public sealed partial class ChatViewModel : PageViewModelBase
 
         HasWorkspace = ws is not null;
         ActiveWorkspaceName = ws?.Name ?? "워크스페이스 미선택";
-        ActiveConversationTitle = conv?.Title ?? (ws is null ? "워크스페이스를 먼저 선택해 주세요" : "새 대화 (질문 시 자동 생성)");
+        ActiveConversationTitle = conv?.Title ?? (ws is null ? "워크스페이스를 먼저 선택해 주세요" : "새 대화");
+
+        var readyDocs = _workspaceContext.Documents.Count(d => d.IsReady);
+        IndexedDocumentCount = readyDocs;
+        IndexedDocumentsLabel = readyDocs > 0
+            ? $"문서 {readyDocs}개 색인 완료"
+            : _workspaceContext.Documents.Count > 0
+                ? $"문서 {_workspaceContext.Documents.Count}개 등록됨"
+                : "색인된 문서 없음";
 
         if (conv is null)
         {
@@ -340,9 +498,19 @@ public sealed partial class ChatViewModel : PageViewModelBase
 
                 ActiveConversationTitle = detail.Title;
                 Messages.Clear();
-                foreach (var msg in detail.Messages)
+                var list = detail.Messages.ToList();
+                var lastAssistantIndex = list.FindLastIndex(m => !string.Equals(m.Role, "user", StringComparison.OrdinalIgnoreCase));
+                for (var idx = 0; idx < list.Count; idx++)
                 {
-                    Messages.Add(new ChatMessageItemViewModel(msg, req => EvidenceRequested?.Invoke(this, req)));
+                    var msg = list[idx];
+                    var canRegen = idx == lastAssistantIndex;
+                    Messages.Add(new ChatMessageItemViewModel(
+                        msg,
+                        SelectedModelName,
+                        canRegen,
+                        req => EvidenceRequested?.Invoke(this, req),
+                        CopyMessageText,
+                        () => _ = RegenerateLastQuestionAsync()));
                 }
 
                 UpdateEmptyState();

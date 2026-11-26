@@ -1,20 +1,22 @@
 <div align="center">
 
+<img src="apps/desktop/src/Dograc.App/Assets/dograc.png" width="84" height="84" alt="dograc icon" />
+
 # dograc
 
-**사내 기밀 정보 보호를 위한 로컬 오픈소스 모델 기반 데스크톱-웹 하이브리드 RAG 플랫폼**
+**사내 기밀 정보 보호를 위한 로컬 오픈소스 모델 기반 통합 WPF AI 리서치 워크스페이스**
 
-*원클릭 데스크톱 런처 · 100% 로컬 모델 자립 구동 · 투명한 실행 추적(Trace) · 정밀 인라인 근거 인용 · Reading-First KDS UI*
+*단일 WPF 데스크톱 앱 · 100% 로컬 모델 자립 구동 · 투명한 실행 추적(Evidence) · 정밀 인라인 인용 & PDF 미리보기 · Light/Dark KDS UI · Velopack 원클릭 자동 업데이트*
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Next.js-14.2-black?style=flat-square&logo=next.js" alt="Next.js 14" />
+  <img src="https://img.shields.io/badge/.NET_10-WPF_Desktop-512BD4?style=flat-square&logo=dotnet" alt=".NET 10 WPF" />
   <img src="https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi" alt="FastAPI" />
   <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql" alt="PostgreSQL" />
   <img src="https://img.shields.io/badge/Qdrant-Vector_DB-DC2626?style=flat-square" alt="Qdrant" />
   <img src="https://img.shields.io/badge/Ollama-Local_LLM-purple?style=flat-square" alt="Ollama" />
   <img src="https://img.shields.io/badge/Velopack-1.2.161-6F42C1?style=flat-square" alt="Velopack" />
-  <img src="https://img.shields.io/badge/Architecture-Clean_Modular-2F855A?style=flat-square" alt="Clean Modular" />
-  <img src="https://img.shields.io/badge/Tests-pytest_59_passed-009688?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-xUnit_43_+_pytest_62-009688?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/Release-v0.3.0-5055B1?style=flat-square" alt="Release v0.3.0" />
 </p>
 
 </div>
@@ -23,49 +25,46 @@
 
 ## 1. 개요 (Overview)
 
-**`dograc`**는 사내 규정, 계약서, 특허 명세서, 기술 문서 등 기업 내부의 비정형 지식 문서를 안전하게 질의응답하고 요약할 수 있는 **데스크톱-웹 하이브리드 RAG(Retrieval-Augmented Generation) 플랫폼**입니다.
+**`dograc`**는 사내 규정, 계약서, 특허 명세서, 기술 문서 등 기업 내부의 비정형 지식 문서를 안전하게 탐색·질의응답·검증할 수 있는 **Local AI Research Workspace(통합 WPF 데스크톱 RAG 플랫폼)**입니다.
 
-OpenAI나 Anthropic 등 외부 상용 클라우드 API를 사용하는 기존 RAG 시스템은 사내 핵심 기밀이 외부 서버로 전송되는 심각한 데이터 유출 리스크를 안고 있습니다. `dograc`는 **외부 전송 데이터량 0 바이트(Zero Data Egress)**를 원칙으로 하여, 업무 단말기 내에 설치된 로컬 오픈소스 모델(Ollama / Qwen2.5, `BAAI/bge-m3`)과 오픈소스 스토리지(PostgreSQL, Qdrant, MinIO)만으로 완전 자립 구동됩니다.
+외부 상용 클라우드 API를 사용하는 기존 RAG 시스템은 사내 핵심 기밀이 외부 서버로 전송되는 심각한 데이터 유출 리스크를 안고 있습니다. `dograc`는 **외부 전송 데이터량 0 바이트(Zero Data Egress)**를 원칙으로 하여, 업무 단말기 내 로컬 오픈소스 모델(Ollama / Qwen2.5, `BAAI/bge-m3`)과 오픈소스 스토리지(PostgreSQL, Qdrant, MinIO)만으로 완전 자립 구동됩니다.
 
-Windows 및 macOS에서 **프로그램 실행(원클릭) 한 번으로 백그라운드 인프라가 가동되고 로컬호스트 웹 브라우저(`localhost:3000`)로 자동 연결**되며, 교보 디자인 시스템(KDS) 기반의 Reading-First UI, 투명한 실행 추적(Execution Trace), 정밀한 인라인 페이지 인용을 제공합니다.
+`v0.2.0`부터 기존 Python Tkinter 런처와 Next.js 웹 프론트엔드를 **하나의 네이티브 Windows WPF 애플리케이션(`apps/desktop`)**으로 통합했습니다. 앱 실행 즉시 Main Shell이 열리며, 백그라운드에서 Docker · Ollama · FastAPI 상태를 비동기 점검·자동 기동하고 하나의 창 안에서 문서 관리, 대화형 RAG 질의응답, 근거(Evidence) 감사, PDF 원문 미리보기 및 원클릭 자동 업데이트까지 완결합니다.
 
 ---
 
 ## 2. 주요 특장점 (Key Features)
 
-### 1) 원클릭 데스크톱-웹 하이브리드 실행
+### 1) 단일 통합 WPF 워크스페이스 (Main Shell & 6개 독립 페이지)
 
-- Windows 탐색기(`dograc.bat`) 또는 macOS Finder(`dograc.command`)에서 더블클릭 한 번으로 실행됩니다.
-- 복잡한 터미널 명령어나 가상환경 설정 없이, 데스크톱 런처가 Docker 인프라, 백엔드 API, 웹 UI, 로컬 모델 헬스체크를 순차 수행하고 기본 브라우저를 자동 호출합니다.
-- 비개발자 사내 임직원도 즉시 업무에 활용할 수 있는 직관적인 데스크톱 창과 서비스 상태 표시등을 제공합니다.
+- **즉시 진입 & 비동기 백그라운드 기동**: 실행 즉시 Main Shell을 표시하고 백그라운드에서 Docker, Ollama, FastAPI 상태를 점검·자동 시작합니다. 최초 환경 구성이 필요한 경우에만 **Setup Wizard**를 띄웁니다.
+- **서비스 소유권 구분 (`External` vs `Managed`)**: 이미 외부에서 실행 중인 서비스는 유지하고, `dograc`가 직접 시작한 서비스만 앱 종료 시 안전하게 정리합니다.
+- **6-영역 데스크톱 레이아웃**: 커스텀 Windows Title Bar, 좌측 Navigation Rail, 접기·크기조절 가능한 Sidebar(워크스페이스 선택 + 세로 대화 검색/목록), 중앙 AI Chat Workspace, 우측 접이식 Context Panel(`Documents` / `Evidence` / `Preview`), 하단 System Status Bar로 구성됩니다.
+- **6개 독립 페이지**: `Chat` · `Documents` · `Workspaces` · `Models` · `System` · `Settings`
 
 ### 2) 완전한 온프레미스 & 로컬 모델 자립 구동 (Zero Data Egress)
 
-- 외부 상용 클라우드 API를 일절 호출하지 않아 추가 종량제 과금($0)이 없습니다.
-- 로컬 GPU 기반의 **Ollama / vLLM (`qwen2.5:7b`)** 및 **`BAAI/bge-m3`** 온디바이스 임베딩을 활용합니다.
-- 인터넷 연결이 차단된 폐쇄망 또는 단말기 독립(Workstation-Isolated) 환경에서도 데이터가 단말 외부로 단 1바이트도 유출되지 않습니다.
+- 외부 상용 클라우드 API를 호출하지 않아 종량제 과금($0)과 데이터 외부 유출이 없습니다.
+- `Models` 페이지에서 로컬 **Ollama (`/api/tags`)** 설치 모델을 자동 감지하여 원클릭으로 전환할 수 있으며, `BAAI/bge-m3` 온디바이스 임베딩을 사용합니다.
+- 인터넷 연결이 차단된 폐쇄망 환경에서도 업데이트 확인 등 네트워크 의존 기능이 안전하게 오프라인 처리됩니다.
 
-### 3) 투명한 RAG 실행 추적기 (Transparent Execution Trace)
+### 3) 투명한 근거 분석(Evidence) & PDF 원문 미리보기(Preview)
 
-- 검색과 생성을 단일 블랙박스 체인으로 묶지 않고 명시적으로 분리하여 오케스트레이션합니다.
-- AI 답변마다 **'검색 및 실행 분석 보기'** 슬라이드인 패널(`TraceDrawer`)을 제공합니다.
-- 검색 청크별 코사인 유사도 점수, 텍스트 미리보기, LLM에 실제로 주입된 프롬프트 전문, 순수 추론 지연 시간(ms)을 투명하게 감사(Audit)할 수 있습니다.
+- AI 답변마다 `[파일명, p.숫자]` 형태의 정규화된 **클릭 가능한 인라인 인용 배지**를 렌더링합니다.
+- 인용 배지 클릭 시 우측 **Evidence 탭**이 자동으로 열리며, 사용 모델명·응답 지연 시간(`ms`)·코사인 유사도(`%`)·매칭 청크 원문 하이라이트·LLM 주입 프롬프트 전문을 즉시 대조할 수 있습니다.
+- **Preview 탭**에서 `WebView2` 기반 인라인 PDF 원문(`#page=N`) 이동, 로컬 파일 연결, 외부 앱 열기 및 TXT/발췌문 Fallback 보기를 지원합니다.
+- 사내 문서 문맥에 근거가 없는 질문에는 추측하지 않고 정직하게 답변 불가를 선언합니다.
 
-### 4) 정밀한 인라인 근거 인용과 정직한 거절 (Grounded Citations & Honest Refusal)
+### 4) Reading-First KDS 디자인 시스템 (Light / Dark / System 테마)
 
-- AI 어시스턴트의 모든 답변은 참조한 실제 원본 문서의 위치(`[파일명, p.페이지번호]`)를 정규화하여 인라인 배지 형태로 렌더링합니다.
-- 인라인 배지 클릭 시 원본 문서 청크와 즉시 대조할 수 있습니다.
-- 사내 문서 문맥에 근거가 없는 질문의 경우 거짓 답변을 지어내지 않고 *"문서에서 관련 내용을 확인할 수 없습니다"*라고 정직하게 답변 불가를 안내합니다.
+- 교보 디자인 시스템(KDS)의 Reading-First 철학을 WPF `ResourceDictionary` Design Token으로 구현했습니다.
+- **Primary Indigo (`#5055B1`)**, **1 DIP 헤어라인 보더**, **4–8 DIP 코너 곡률**, 이모지 배제 및 `Segoe Fluent Icons` 기반의 단정한 UI를 제공합니다.
+- 앱 재시작 없이 **System / Light / Dark** 테마를 즉시 전환하며 `%LOCALAPPDATA%\dograc\settings.json`에 영속 저장합니다.
 
-### 5) Reading-First 미니멀 디자인 시스템 (KDS 기반)
+### 5) Velopack 기반 원클릭 자동 업데이트
 
-- 교보 디자인 시스템(Kyobo Design System)의 시각 언어를 계승하여 장시간 규정과 문서를 판독하는 데 최적화되었습니다.
-- 시각적 잡음을 유발하는 이모지와 네온 그라데이션을 전면 배제하고, **1px 정갈한 헤어라인**과 차분한 **Periwinkle Indigo (`#5055B1`) 액션 포인트**를 적용했습니다.
-
-### 6) Windows 설치 및 GitHub Releases 업데이트 확인
-
-- PyInstaller 기반의 Standalone 패키징 및 Portable ZIP 배포를 지원합니다.
-- 데스크톱 런처 상단에서 현재 버전(`v0.1.0`)을 표시하며, **[업데이트 확인]** 버튼을 통해 GitHub Releases의 최신 안정 버전을 비동기로 조회하고 다운로드 페이지로 연결합니다.
+- 설치 버전(`dograc-win-Setup.exe`) 실행 시 백그라운드에서 GitHub Releases 최신 버전을 자동 확인합니다.
+- 새 버전이 감지되면 Title Bar의 **[↓ 업데이트 vX.Y.Z]** 버튼(및 `Settings` 페이지)에서 진행률(`0~100%`)과 함께 원클릭 다운로드·설치·자동 재시작이 가능합니다.
 
 ---
 
@@ -73,30 +72,24 @@ Windows 및 macOS에서 **프로그램 실행(원클릭) 한 번으로 백그라
 
 ```mermaid
 flowchart TD
-    subgraph Workstation["업무 단말기 (Local Workstation - Windows / macOS)"]
-        subgraph DesktopLauncher["0. 데스크톱 런처 (Desktop Launcher)"]
-            LauncherUI["KDS 테마 시스템 제어 창"]
-            ProcessMgr["인프라 및 프로세스 수명주기 관리자"]
-            Updater["GitHub Releases 업데이트 검사기"]
-            BrowserHook["기본 브라우저 자동 오픈 Hook"]
-        end
-
-        subgraph Presentation["1. 프론트엔드 웹 계층 (Next.js 14 App Router)"]
-            UI["KDS Web UI (Reading-First)"]
-            DocPanel["문서 보관함 & 업로더"]
-            ChatPanel["대화 스레드 & 인라인 인용 배지"]
-            TraceDrawer["실행 추적(Trace) 슬라이드인 패널"]
+    subgraph Workstation["업무 단말기 (Local Workstation - Windows)"]
+        subgraph DesktopApp["1. 통합 WPF 데스크톱 클라이언트 (.NET 10 / MVVM / DI)"]
+            Shell["Main Shell (TitleBar · NavRail · Sidebar · Chat · ContextPanel)"]
+            Pages["6 Pages (Chat · Docs · Workspaces · Models · System · Settings)"]
+            Context["Context Panel (Documents · Evidence · WebView2 PDF Preview)"]
+            ServiceMgr["LocalServiceManager & StartupOrchestrator (External / Managed)"]
+            Updater["Velopack UpdateManager + GitHub Releases Fallback"]
         end
 
         subgraph Backend["2. 백엔드 API 계층 (FastAPI 0.115 Async)"]
-            Router["API v1 라우터 (/workspaces, /documents, /conversations)"]
+            Router["API v1 라우터 (/workspaces, /documents, /conversations, /traces)"]
             DocIngest["문서 수집 및 파싱 엔진 (PyMuPDF / Chunker)"]
-            Retriever["검색 오케스트레이터 (Dense Retrieval Service)"]
+            Retriever["검색 오케스트레이터 (Dense Retrieval + 이중 인가)"]
             ConvService["대화 및 추적 오케스트레이터 (Trace Generator)"]
         end
 
         subgraph Storage["3. 영속성 데이터 계층 (Docker Compose)"]
-            PG[("PostgreSQL 16\n(메타데이터, 버전, 청크, Trace)")]
+            PG[("PostgreSQL 16\n(메타데이터, 청크, 대화, Trace)")]
             MinIO[("MinIO S3 호환 스토리지\n(불변 문서 원본 바이너리)")]
             VectorDB[("Qdrant Vector DB\n(bge-m3 1024차원 HNSW)")]
         end
@@ -107,15 +100,18 @@ flowchart TD
         end
     end
 
-    GitHub[(GitHub Releases)]
+    GitHub[(GitHub Releases / Velopack Feed)]
 
-    LauncherUI --> ProcessMgr
-    LauncherUI --> Updater --> GitHub
-    ProcessMgr --> Storage
-    ProcessMgr --> Backend
-    ProcessMgr --> BrowserHook --> Presentation
+    Shell --> Pages
+    Shell --> Context
+    Shell --> ServiceMgr
+    Shell --> Updater --> GitHub
+    ServiceMgr --> Storage
+    ServiceMgr --> Backend
+    ServiceMgr --> Models
 
-    Presentation --> Backend
+    Pages -->|"REST API (/api/v1)"| Backend
+    Context -->|"REST API (/api/v1)"| Backend
     Backend --> Storage
     Backend --> Models
     DocIngest --> MinIO
@@ -127,8 +123,8 @@ flowchart TD
     ConvService --> PG
 ```
 
-- **관심사 분리**: 도메인 로직은 LangChain 등의 외부 라이브러리에 직접 의존하지 않고 Python `Protocol` 추상화 뒤에 배치됩니다.
-- **이중 인가(Dual Authorization)**: Qdrant 벡터 검색 결과는 PostgreSQL에서 워크스페이스 소유권 및 문서 유효(`ready`) 상태를 관계형 조인으로 재검증하여 부서 간 데이터 누출을 원천 차단합니다.
+- **계층 분리 (Clean 3-Layer Desktop)**: `Dograc.Core`(도메인 모델·DTO·파서·계약) / `Dograc.Infrastructure`(HTTP API 클라이언트·프로세스/서비스 제어·Ollama·Velopack·JSON 설정) / `Dograc.App`(WPF UI·Design Tokens·ViewModels). WPF 클라이언트는 데이터베이스에 직접 접근하지 않고 REST API로만 통신합니다.
+- **이중 인가(Dual Authorization)**: Qdrant 벡터 검색 결과는 PostgreSQL에서 워크스페이스 소유권 및 문서 유효(`ready`) 상태를 관계형 조인으로 재검증하여 데이터 격리를 보장합니다.
 
 ---
 
@@ -136,236 +132,162 @@ flowchart TD
 
 | 영역 | 기술 스택 | 역할 |
 | :--- | :--- | :--- |
-| **Desktop Launcher** | **Python 3.12**, Tkinter, PyInstaller | Windows/macOS 원클릭 데스크톱 런처 및 서비스 수명주기 오케스트레이터 |
-| **Packaging & Update** | **Velopack 1.2.161**, GitHub Actions | Windows x64 원클릭 설치·Portable 패키지와 GitHub Releases 자동 델타 업데이트 |
-| **Frontend Web** | **Next.js 14 (App Router)**, React 18, TypeScript, Tailwind CSS, TanStack Query v5, Zustand, Lucide Icons | KDS 디자인 시스템 기반 Reading-First 고가독성 SPA |
-| **Backend API** | **FastAPI 0.115**, SQLAlchemy 2.0 (Async), Alembic, Pydantic v2 | 비동기 고성능 RAG 백엔드 서버 및 트레이스 영속화 |
+| **Desktop Client** | **.NET 10**, **WPF**, `CommunityToolkit.Mvvm`, `Microsoft.Extensions.Hosting`, `Microsoft.Web.WebView2` | 통합 Local AI Research Workspace UI, MVVM/DI, KDS Design Tokens, PDF Preview |
+| **Packaging & Update** | **Velopack 1.2.161**, PowerShell (`scripts/package_wpf.ps1`), GitHub Actions | Windows x64 원클릭 설치기(`Setup.exe`), Portable ZIP, 델타 자동 업데이트 |
+| **Backend API** | **FastAPI 0.115**, SQLAlchemy 2.0 (Async), Alembic, Pydantic v2 | 비동기 고성능 RAG 백엔드 서버 및 실행 Trace 영속화 |
 | **Storage** | **PostgreSQL 16**, **Qdrant**, **MinIO (S3 Compatible)** | 워크스페이스 메타데이터, 벡터 인덱스, 문서 원본 불변 보관 |
 | **AI / RAG** | **Ollama** (`qwen2.5:7b`), **vLLM**, `BAAI/bge-m3`, PyMuPDF | 모듈형 로컬 임베딩 및 오픈소스 LLM 추론 |
-| **Tooling & Test** | **Docker & Docker Compose**, **uv**, **pnpm**, **pytest** (59 passing) | 재현 가능한 격리형 로컬 개발 환경 및 자동화 테스트 |
+| **Tooling & Test** | **xUnit** (43 passing), **pytest** (62 passing), **Docker Compose**, **uv** | 클라이언트·백엔드 자동화 단위/통합·장애 주입 테스트 및 격리 로컬 인프라 |
+| **Legacy (보존 중)** | Python Tkinter (`launcher/`), Next.js 14 (`apps/web/`) | 기능 동등성 최종 검증 완료 전까지 참고·폴백용으로 보존 |
 
 ---
 
 ## 5. 다운로드 및 설치 가이드 (Download & Installation)
 
-최신 공식 릴리스는 [GitHub Releases](https://github.com/minwoo1119/dograc/releases/latest)에서 다운로드할 수 있습니다.
+최신 공식 릴리스(`v0.3.0`)는 [GitHub Releases](https://github.com/minwoo1119/dograc/releases/latest)에서 다운로드할 수 있습니다.
 
 ### 어떤 파일을 다운로드해야 하나요?
 
 | 배포 파일명 | 파일 크기 | 권장 대상 및 용도 | 주요 특징 |
 | :--- | :--- | :--- | :--- |
-| [**`dograc-win-Setup.exe`**](https://github.com/minwoo1119/dograc/releases/latest/download/dograc-win-Setup.exe) | 약 23 MB | **일반 사용자 (가장 권장)**<br/>Windows x64 원클릭 설치 프로그램 | • 더블클릭 시 사용자 폴더에 자동 설치 완료<br/>• 시작 메뉴 및 바탕화면 바로가기 등록<br/>• **앱 내 원클릭 자동 델타 업데이트 및 재시작 지원** |
-| [**`dograc-win-Portable.zip`**](https://github.com/minwoo1119/dograc/releases/latest/download/dograc-win-Portable.zip) | 약 16 MB | **무설치 환경 선호 사용자**<br/>Windows x64 휴대용 압축 패키지 | • 별도 설치 없이 압축 해제 후 즉시 실행<br/>• 시스템 레지스트리/프로그램 폴더 미변경<br/>• USB 등 이동식 드라이브 활용 가능 |
-| `dograc.bat` / `dograc.command` | 소스 코드 | **개발자**<br/>Git 저장소 클론 후 직접 실행 | • 로컬 Python 가상환경 및 개발 코드 직접 실행 |
+| [**`dograc-win-Setup.exe`**](https://github.com/minwoo1119/dograc/releases/latest/download/dograc-win-Setup.exe) | 약 73 MB | **일반 사용자 (가장 권장)**<br/>Windows x64 원클릭 설치 프로그램 | • 사용자 폴더에 간편 설치 및 시작 메뉴 바로가기 등록<br/>• **Title Bar / Settings 원클릭 자동 업데이트 및 재시작 지원** |
+| [**`dograc-win-Portable.zip`**](https://github.com/minwoo1119/dograc/releases/latest/download/dograc-win-Portable.zip) | 약 66 MB | **무설치 환경 선호 사용자**<br/>Windows x64 Velopack 포터블 패키지 | • 별도 설치 없이 압축 해제 후 즉시 실행 (`dograc.exe`)<br/>• 레지스트리·시스템 폴더 미변경 |
+| [**`dograc-wpf-win-x64.zip`**](https://github.com/minwoo1119/dograc/releases/latest/download/dograc-wpf-win-x64.zip) | 약 64 MB | **직접 배포 / 사내 배포용**<br/>Self-Contained WPF 실행 폴더 ZIP | • .NET 런타임 내장 단독 실행 폴더 (`dograc.exe`) |
+
+### 실행 및 자동 업데이트 방법
+
+1. [**`dograc-win-Setup.exe`**](https://github.com/minwoo1119/dograc/releases/latest/download/dograc-win-Setup.exe)를 내려받아 실행하면 설치와 함께 **dograc Desktop**이 즉시 열립니다.
+2. 앱이 백그라운드에서 Docker · Ollama · FastAPI 상태를 점검하고 필요한 로컬 서비스를 자동 기동합니다. (초기 구성이 필요하면 Setup Wizard가 안내합니다.)
+3. 이후 새 버전이 출시되면 상단 Title Bar에 **[↓ 업데이트 vX.Y.Z]** 버튼이 표시되며, 클릭 한 번으로 다운로드 진행률 표시 후 자동 재시작·업데이트됩니다.
 
 ---
 
-### 실행 방법 안내
-
-#### 1) 권장: `dograc-win-Setup.exe`로 설치하여 실행하기
-1. 최신 [**`dograc-win-Setup.exe`**](https://github.com/minwoo1119/dograc/releases/latest/download/dograc-win-Setup.exe)를 다운로드합니다.
-2. 다운로드한 파일을 더블클릭합니다. 별도의 복잡한 절차 없이 사용자 환경(`%LOCALAPPDATA%\Programs\dograc`)에 즉시 설치됩니다.
-3. 바탕화면 또는 시작 메뉴의 **`dograc`** 아이콘을 실행하면 런처가 열립니다.
-4. 런처 화면에서 **[전체 서비스 시작]**을 누르면 모든 백그라운드 서비스가 기동되고 웹 브라우저(`http://localhost:3000`)가 자동으로 열립니다.
-
-#### 2) 무설치: `dograc-win-Portable.zip`으로 실행하기
-1. 최신 [**`dograc-win-Portable.zip`**](https://github.com/minwoo1119/dograc/releases/latest/download/dograc-win-Portable.zip)을 다운로드합니다.
-2. 원하는 작업 폴더에 압축을 풉니다.
-3. 폴더 내의 `dograc-launcher.exe`를 더블클릭하여 실행합니다.
-
----
-
-### 자동 업데이트 방법
-
-Velopack 기반으로 설치된 앱(`dograc-win-Setup.exe`로 설치한 경우)은 다음과 같이 쉽게 업데이트할 수 있습니다:
-1. 런처 대시보드 상단의 **[업데이트 확인]** 버튼을 클릭합니다.
-2. 새로운 버전이 감지되면 릴리스 노트 요약과 함께 다운로드 여부를 묻는 대화상자가 표시됩니다.
-3. **[예]**를 누르면 다운로드 진행률(%)이 표시되며, 완료 후 앱이 자동으로 재시작되어 최신 버전으로 업데이트됩니다.
-
----
-
-## 6. 빌드 및 실행 (Build & Run)
+## 6. 개발자 빌드 및 실행 (Build & Run)
 
 ### 사전 준비 사항
 
-- [Docker Desktop](https://www.docker.com/) (가동 중)
-- [Python](https://www.python.org/) 3.12+ 및 [uv](https://docs.astral.sh/uv/)
-- [Node.js](https://nodejs.org/) v20+ 및 [pnpm](https://pnpm.io/)
-- 로컬 LLM 구동 시: [Ollama](https://ollama.ai/) 설치 (`ollama pull qwen2.5:7b`)
+- **Windows 10 / 11 (x64)**
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [Docker Desktop](https://www.docker.com/) (PostgreSQL · Qdrant · MinIO 컨테이너용)
+- [Python](https://www.python.org/) 3.12+ 및 [uv](https://docs.astral.sh/uv/) (FastAPI 백엔드용)
+- 로컬 LLM 구동 시: [Ollama](https://ollama.ai/) 설치 (`ollama run qwen2.5:7b`)
 
----
+### Step 1. 저장소 클론 및 백엔드 의존성 준비
 
-### Step 1. 저장소 클론
-
-```bash
+```powershell
 git clone https://github.com/minwoo1119/dograc.git
 cd dograc
-```
+copy .env.example .env
 
-### Step 2. 원클릭 데스크톱 런처 실행 (권장)
-
-터미널 명령어 없이 한 번의 더블클릭으로 모든 백그라운드 서비스를 띄우고 브라우저를 자동 오픈합니다:
-
-- **Windows**: 루트 디렉터리의 [`dograc.bat`](./dograc.bat) 더블클릭
-- **macOS**: 루트 디렉터리의 [`dograc.command`](./dograc.command) 더블클릭
-- **파이썬 직접 실행**: `python run_launcher.py` (또는 터미널 전용: `python run_launcher.py --cli`)
-
-### Step 3. 개발자 수동 실행 (Manual CLI)
-
-수동으로 각 서비스를 개별 제어하고자 할 경우:
-
-```bash
-# 1. 환경 변수 설정 및 인프라 실행
-cp .env.example .env
-docker compose -f infra/compose.yaml up -d
-
-# 2. 백엔드 API 실행 (FastAPI)
-cd apps/api
+# 백엔드 가상환경 준비
+cd apps\api
 uv sync
-uv run alembic upgrade head
-uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# 3. 프론트엔드 웹 UI 실행 (새 터미널)
-cd apps/web
-pnpm install
-pnpm dev
+cd ..\..
 ```
-- 브라우저에서 [`http://localhost:3000`](http://localhost:3000) 접속
-- Swagger API 인터랙티브 문서: [`http://localhost:8000/docs`](http://localhost:8000/docs)
 
-### Step 4. 자동화 테스트 실행
+### Step 2. 통합 WPF 데스크톱 앱 실행
 
-```bash
-# 백엔드 테스트 (56개 테스트 전체 통과 필수)
+```powershell
+dotnet run --project apps/desktop/src/Dograc.App/Dograc.App.csproj
+```
+> 앱 실행 시 백그라운드에서 Docker Compose · Ollama · FastAPI를 자동 점검 및 기동합니다. 수동으로 백엔드만 따로 띄워 두어도 `External` 서비스로 자동 인식합니다.
+
+### Step 3. 전체 테스트 실행
+
+```powershell
+# WPF 클라이언트 빌드 및 단위/통합 테스트 (23 passed)
+dotnet build apps/desktop/Dograc.sln --configuration Release
+dotnet test apps/desktop/Dograc.sln --configuration Release --no-build
+
+# 백엔드 API 테스트 (59 passed)
 cd apps/api
 uv run pytest
+```
 
-# 프론트엔드 빌드 검증 (타입 오류 0건 유지)
-cd apps/web
-npx pnpm build
+### Step 4. 로컬 Windows 패키징
+
+```powershell
+# 포터블 실행 파일 및 ZIP 생성 (artifacts/wpf/dograc-wpf-win-x64.zip)
+powershell -ExecutionPolicy Bypass -File scripts/package_wpf.ps1
+
+# Velopack 설치기(Setup.exe) 및 업데이트 피드까지 함께 생성 (vpk CLI 필요)
+dotnet tool install -g vpk
+powershell -ExecutionPolicy Bypass -File scripts/package_wpf.ps1 -Version 0.2.0 -PackVelopack
 ```
 
 ---
 
 ## 7. 사용 가이드 (How to Use)
 
-1. **데스크톱 런처 시작**: `dograc.bat` 또는 `dograc.command`를 실행하고 **[원클릭 서비스 시작]**을 클릭합니다. 브라우저가 자동 실행됩니다.
-2. **워크스페이스 생성**: 상단 바에서 '새 워크스페이스'를 생성하여 부서, 프로젝트 또는 주제별로 격리 영역을 생성합니다.
-3. **사내 문서 업로드**: 좌측 문서 패널로 사내 PDF 문서를 드래그앤드롭합니다. 텍스트 추출, 재귀적 청킹, BGE-M3 벡터 색인이 자동 완료됩니다.
-4. **질의응답**: 채팅창에 사내 규정이나 기술 문서에 대한 질문을 입력합니다.
-5. **인라인 인용 확인**: 답변 본문 속 `[파일명, p.숫자]` 인라인 배지를 통해 정확한 근거 페이지를 확인합니다.
-6. **실행 추적 감사**: 답변 하단의 **'검색 및 실행 분석 보기'** 버튼을 클릭하여 슬라이드인 패널에서 매칭 청크 점수, 원본 프롬프트, LLM 추론 지연 시간을 조회합니다.
+1. **앱 실행 & 환경 확인**: `dograc.exe`를 실행하면 Title Bar의 `Infra` · `Ollama` · `API` 상태 칩이 실시간으로 갱신되며, 상세 제어와 로그는 `System` 페이지에서 확인할 수 있습니다.
+2. **워크스페이스 생성**: 좌측 Sidebar 상단 또는 `Workspaces` 페이지에서 주제·부서별 워크스페이스를 생성합니다.
+3. **문서 업로드 및 자동 색인**: 우측 Context Panel의 `Documents` 탭이나 `Documents` 페이지에 PDF/TXT 파일을 드래그앤드롭하면 업로드와 벡터 색인이 자동으로 완료됩니다.
+4. **로컬 모델 선택**: `Models` 페이지에서 로컬 Ollama 연결 테스트 후 설치된 모델(`qwen2.5:7b` 등)을 클릭해 활성화합니다.
+5. **질의응답 & 근거 검증**: 중앙 `Chat` 페이지에서 질문하고, 답변 내 `[파일명, p.숫자]` 인라인 인용 배지를 클릭해 우측 `Evidence` 탭(유사도·발췌·프롬프트)과 `Preview` 탭(PDF 인용 페이지)으로 바로 대조합니다.
 
 ---
 
-## 8. 모델 교체 및 커스텀 모델 설정 (Custom Models)
-
-`dograc`는 Protocol 추상화 인터페이스를 채택하여 소스코드 수정 없이 설정(`.env`)만으로 모델을 유연하게 교체할 수 있습니다.
-
-```dotenv
-# .env 설정 예시
-# 임베딩 모델 (HuggingFace 로컬 캐시)
-EMBEDDING_MODEL_NAME=BAAI/bge-m3
-
-# 로컬 LLM 생성 공급자 (Ollama 또는 vLLM)
-OLLAMA_BASE_URL=http://localhost:11434
-GENERATION_MODEL_NAME=qwen2.5:7b
-```
-
-Ollama에서 다른 오픈소스 모델을 사용할 경우:
-```bash
-ollama pull llama3.1:8b
-# .env에서 GENERATION_MODEL_NAME=llama3.1:8b 로 변경
-```
-
----
-
-## 9. 결과물과 프로젝트 구조 (Outputs & Project Structure)
-
-데스크톱 패키징 명령(`python scripts/build_desktop.py`)을 실행하면 다음 결과물이 생성됩니다:
-
-```text
-artifacts/
-└─ releases/
-   └─ dograc-win-Portable.zip  # Windows x64 휴대용 배포본
-dist/
-└─ dograc-launcher/            # Standalone 실행 디렉터리
-```
-
-소스 저장소 구조는 다음과 같습니다:
+## 8. 저장소 구조 (Project Structure)
 
 ```text
 dograc/
-├─ launcher/                     # 데스크톱-웹 하이브리드 런처 패키지
-│  ├─ gui.py                     # Tkinter 기반 KDS 테마 데스크톱 창
-│  ├─ services.py                # Docker, API, Web, Ollama 프로세스 수명주기 관리자
-│  ├─ updater.py                 # GitHub Releases 업데이트 확인 서비스
-│  └─ version.py                 # 버전 명세 (v0.1.0)
 ├─ apps/
-│  ├─ web/                       # Next.js 14 App Router 기반 SPA 프론트엔드 (KDS 준수)
-│  │  ├─ DESIGN.md               # UI/UX 디자인 사양서 (Reading-First, KDS 기반)
-│  │  ├─ src/app/                # 라우트 및 레이아웃
-│  │  └─ src/components/         # Navbar, DocumentPanel, ChatPanel, TraceDrawer 등
-│  └─ api/                       # FastAPI 비동기 백엔드
-│     ├─ app/api/v1/             # 엔드포인트 라우터 (workspaces, documents, traces)
-│     ├─ app/models/             # 추상화 프로토콜 (Embedding, Generation)
-│     ├─ app/retrieval/          # Dense 검색 및 RDBMS 이중 인가 필터링
-│     ├─ app/document_processing/# PDF 파싱 및 재귀적 청킹 엔진
-│     └─ tests/                  # pytest 단위 및 통합 테스트 모음 (56 passed)
-├─ scripts/
-│  └─ build_desktop.py           # PyInstaller 데스크톱 패키징 스크립트
+│  ├─ desktop/                       # [메인] 통합 WPF 데스크톱 솔루션 (.NET 10)
+│  │  ├─ Dograc.sln
+│  │  ├─ src/
+│  │  │  ├─ Dograc.Core/             # 도메인 모델, DTO, CitationParser, 서비스 계약
+│  │  │  ├─ Dograc.Infrastructure/   # FastAPI 클라이언트, LocalServiceManager, Ollama, Velopack, Settings
+│  │  │  └─ Dograc.App/              # WPF Shell, KDS Design Tokens(Light/Dark), 6 Pages, WebView2 Preview
+│  │  └─ tests/
+│  │     └─ Dograc.Core.Tests/       # xUnit 단위·E2E 통합 테스트 (23 passed)
+│  ├─ api/                           # FastAPI 비동기 백엔드 (http://127.0.0.1:8000)
+│  │  ├─ app/api/v1/                 # workspaces, documents, processing, conversations, traces, health
+│  │  ├─ app/models/                 # Embedding / Generation 추상화 프로토콜
+│  │  └─ tests/                      # pytest 단위 및 통합 테스트 (59 passed)
+│  └─ web/                           # [레거시 보존] 기존 Next.js 14 웹 UI 및 DESIGN.md
+├─ launcher/                         # [레거시 보존] 기존 Python Tkinter 런처
 ├─ infra/
-│  └─ compose.yaml               # PostgreSQL, Qdrant, MinIO 오케스트레이션
+│  └─ compose.yaml                   # PostgreSQL 16, Qdrant, MinIO 오케스트레이션
+├─ scripts/
+│  └─ package_wpf.ps1                # WPF 테스트·Self-Contained 빌드·Velopack 패키징 스크립트
+├─ docs/
+│  └─ wpf-migration-parity.md        # 기존 Launcher+Web 대비 WPF 기능 동등성 검증 보고서
 ├─ .github/
-│  └─ workflows/desktop-release.yml # GitHub Actions 자동 릴리스 워크플로
-├─ AGENTS.md                     # 개발자 및 에이전트 지침서
-├─ dograc.bat                    # Windows 원클릭 실행 배치 스크립트
-├─ dograc.command                # macOS 원클릭 실행 쉘 스크립트
-├─ run_launcher.py               # 파이썬 실행 진입점
-└─ README.md                     # 본 문서
+│  ├─ ISSUE_TEMPLATE/                # 기능/Phase·버그 이슈 템플릿
+│  ├─ PULL_REQUEST_TEMPLATE.md       # PR 리뷰 템플릿
+│  └─ workflows/desktop-release.yml  # 태그(v*.*.*) 기반 자동 테스트·Velopack GitHub Release 배포
+├─ AGENTS.md                         # 개발자 및 AI 에이전트 지침서
+└─ README.md                         # 본 문서
 ```
 
 ---
 
-## 10. 릴리스 방법 (Release)
+## 9. 브랜치 전략 및 릴리스 방법 (Branching & Release)
 
-릴리스 워크플로는 `v*.*.*` 형식의 태그가 push될 때 자동으로 실행됩니다.
+- **브랜치 모델**: `main` (릴리스) ← `dev` (통합 검증) ← `feat/<개발명>` / `docs/<작업명>` (기능별 이슈·PR 단위 작업)
+- **자동 릴리스**: `main` 반영 후 `v*.*.*` 태그를 푸시하면 [`.github/workflows/desktop-release.yml`](./.github/workflows/desktop-release.yml)이 자동 실행됩니다.
 
-```bash
-git tag -a v0.1.0 -m "Release v0.1.0"
-git push origin v0.1.0
+```powershell
+git tag -a v0.2.0 -m "Release v0.2.0 - dograc Unified WPF Desktop"
+git push origin v0.2.0
 ```
 
-GitHub Actions는 다음 작업을 순서대로 수행합니다:
-1. Python 3.12 환경에서 전체 백엔드 테스트(pytest 56건)를 실행합니다.
-2. Node.js 20 환경에서 프론트엔드 웹 UI를 프로덕션 빌드합니다.
-3. PyInstaller로 데스크톱 런처를 번들링하고 `dograc-win-Portable.zip`을 생성합니다.
-4. 태그에 대응하는 GitHub Release를 생성하고 생성물을 자동으로 업로드합니다.
-
-로컬에서 동일한 패키징을 수동으로 수행하려면 다음 명령을 사용합니다:
-```bash
-python scripts/build_desktop.py
-```
+GitHub Actions 실행 순서:
+1. Python 3.12 + `uv`로 백엔드 테스트(`pytest` 59건) 실행
+2. .NET 10 SDK로 WPF 솔루션 빌드·테스트(`xUnit` 23건) 실행
+3. `scripts/package_wpf.ps1 -PackVelopack`으로 `dograc-win-Setup.exe`, `dograc-win-Portable.zip`, `releases.win.json`, `*.nupkg`, `dograc-wpf-win-x64.zip` 생성
+4. 태그에 대응하는 GitHub Release 생성 및 배포 자산 자동 업로드
 
 ---
 
-## 11. 프로젝트 문서 (Documentation)
+## 10. 프로젝트 문서 (Documentation)
 
-- [**AGENTS.md**](./AGENTS.md): 개발자 및 AI 에이전트를 위한 아키텍처 규칙, 코딩 컨벤션, 파인튜닝/평가 워크플로 및 상세 로드맵
-- [**DESIGN.md**](./apps/web/DESIGN.md): 프론트엔드 UI/UX 디자인 시스템 명세서 (KDS 컬러 팔레트, 타이포그래피, 컴포넌트 규격)
-
----
-
-## 12. 개발 원칙 (Development Principles)
-
-- **검색과 생성의 명시적 분리**: RAG 파이프라인의 검색 단계와 생성 단계는 불투명한 체인으로 은닉되지 않으며, 모든 입출력과 점수는 `Trace` 레코드로 영속화됩니다.
-- **도메인 계층의 프레임워크 독립성**: LangChain 등 특정 프레임워크 객체가 비즈니스 로직에 침투하지 않도록 Protocol 추상화 뒤에 배치합니다.
-- **철저한 데이터 격리**: 모든 쿼리와 스토리지는 워크스페이스 단위로 격리되며, 외부 API로 사내 데이터가 절대 전송되지 않습니다.
-- **신뢰 기반 인라인 인용**: 답변은 항상 `[파일명, p.숫자]` 근거를 명시하며, 문맥 부재 시 정직하게 답변 불가를 선언합니다.
-- **테스트 통과 의무**: 백엔드 테스트 100% 통과 및 프론트엔드 타입 오류 0건을 항상 유지합니다.
+- [**AGENTS.md**](./AGENTS.md): 아키텍처 원칙, 코딩·커밋 컨벤션, 파인튜닝 및 정량 평가 체계
+- [**docs/wpf-migration-parity.md**](./docs/wpf-migration-parity.md): WPF 통합 아키텍처 및 기존 Launcher+Web 기능 동등성 매트릭스
+- [**apps/web/DESIGN.md**](./apps/web/DESIGN.md): Reading-First KDS 디자인 시스템 원형 명세서
 
 ---
 
-## 13. 라이선스 (License)
+## 11. 라이선스 (License)
 
 본 프로젝트는 [Apache License 2.0](./LICENSE) 하에 자유롭게 이용 및 수정할 수 있습니다. 자세한 내용은 `LICENSE` 파일을 참고하세요.

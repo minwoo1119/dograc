@@ -9,6 +9,24 @@ namespace Dograc.App.ViewModels;
 
 public sealed record RecommendedModelItem(string Name, string Description, string Command, bool IsRecommended);
 
+public sealed class InstalledModelRowViewModel
+{
+    public InstalledModelRowViewModel(OllamaModelInfo model, bool isActive)
+    {
+        Model = model;
+        IsActive = isActive;
+    }
+
+    public OllamaModelInfo Model { get; }
+    public string Name => Model.Name;
+    public string SizeLabel => Model.SizeLabel;
+    public string Family => Model.Family ?? "ollama";
+    public string ParameterSize => Model.ParameterSize ?? "-";
+    public string MetaLabel => $"{SizeLabel} · {Family}";
+    public bool IsActive { get; }
+    public bool IsNotActive => !IsActive;
+}
+
 /// <summary>
 /// ViewModel for the Models page managing local Ollama connectivity, model discovery, and active model selection.
 /// </summary>
@@ -16,6 +34,7 @@ public sealed partial class ModelsViewModel : PageViewModelBase
 {
     private readonly IOllamaService _ollamaService;
     private readonly ISettingsStore _settingsStore;
+    private readonly List<OllamaModelInfo> _rawModels = [];
 
     [ObservableProperty]
     private string _ollamaEndpointUrl;
@@ -35,6 +54,9 @@ public sealed partial class ModelsViewModel : PageViewModelBase
 
     [ObservableProperty]
     private string? _copiedNotice;
+
+    [ObservableProperty]
+    private string _selectedSection = "설치된 모델";
 
     public ModelsViewModel(
         IOllamaService ollamaService,
@@ -60,6 +82,7 @@ public sealed partial class ModelsViewModel : PageViewModelBase
         {
             OllamaEndpointUrl = updated.OllamaEndpointUrl;
             SelectedModelName = updated.SelectedModelName;
+            RebuildInstalledRows();
         });
     }
 
@@ -68,7 +91,9 @@ public sealed partial class ModelsViewModel : PageViewModelBase
 
     public bool IsNotBusy => !IsBusy;
 
-    public ObservableCollection<OllamaModelInfo> InstalledModels { get; }
+    public bool HasNoInstalledModels => InstalledModels.Count == 0;
+
+    public ObservableCollection<InstalledModelRowViewModel> InstalledModels { get; }
 
     public IReadOnlyList<RecommendedModelItem> RecommendedModels { get; }
 
@@ -88,11 +113,8 @@ public sealed partial class ModelsViewModel : PageViewModelBase
             IsConnected = result.IsSuccess;
             ConnectionMessage = result.Message;
 
-            InstalledModels.Clear();
-            foreach (var model in result.Models)
-            {
-                InstalledModels.Add(model);
-            }
+            _rawModels.Clear();
+            _rawModels.AddRange(result.Models);
 
             if (result.IsSuccess &&
                 result.Models.Count > 0 &&
@@ -101,6 +123,8 @@ public sealed partial class ModelsViewModel : PageViewModelBase
                 SelectedModelName = result.Models[0].Name;
                 SaveModelSettings();
             }
+
+            RebuildInstalledRows();
         }
         finally
         {
@@ -109,16 +133,17 @@ public sealed partial class ModelsViewModel : PageViewModelBase
     }
 
     [RelayCommand]
-    private void SelectInstalledModel(OllamaModelInfo? model)
+    private void SelectInstalledModel(InstalledModelRowViewModel? row)
     {
-        if (model is null)
+        if (row is null)
         {
             return;
         }
 
-        SelectedModelName = model.Name;
+        SelectedModelName = row.Name;
         SaveModelSettings();
-        ConnectionMessage = $"활성 모델이 '{model.Name}'(으)로 변경되었습니다.";
+        RebuildInstalledRows();
+        ConnectionMessage = $"활성 모델이 '{row.Name}'(으)로 변경되었습니다.";
     }
 
     [RelayCommand]
@@ -154,6 +179,26 @@ public sealed partial class ModelsViewModel : PageViewModelBase
         {
             CopiedNotice = $"명령어: {command}";
         }
+    }
+
+    public void SetInstalledModelsForDisplay(IEnumerable<OllamaModelInfo> models)
+    {
+        _rawModels.Clear();
+        _rawModels.AddRange(models);
+        IsConnected = _rawModels.Count > 0;
+        RebuildInstalledRows();
+    }
+
+    private void RebuildInstalledRows()
+    {
+        InstalledModels.Clear();
+        foreach (var model in _rawModels)
+        {
+            var active = string.Equals(model.Name, SelectedModelName, StringComparison.OrdinalIgnoreCase);
+            InstalledModels.Add(new InstalledModelRowViewModel(model, active));
+        }
+
+        OnPropertyChanged(nameof(HasNoInstalledModels));
     }
 
     private static void RunOnUiThread(Action action)

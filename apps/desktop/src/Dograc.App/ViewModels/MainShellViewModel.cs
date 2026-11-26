@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Dograc.Core.Errors;
 using Dograc.Core.Models;
 using Dograc.Core.Navigation;
 using Dograc.Core.Services;
@@ -10,8 +12,53 @@ using Dograc.Core.Theme;
 
 namespace Dograc.App.ViewModels;
 
+public sealed class ConversationRowViewModel
+{
+    public ConversationRowViewModel(ConversationDto conversation, bool isSelected)
+    {
+        Conversation = conversation;
+        IsSelected = isSelected;
+    }
+
+    public ConversationDto Conversation { get; }
+    public Guid Id => Conversation.Id;
+    public string Title => Conversation.Title;
+    public bool IsSelected { get; }
+}
+
+public sealed class ConversationGroupViewModel
+{
+    public ConversationGroupViewModel(string header, IReadOnlyList<ConversationRowViewModel> items)
+    {
+        Header = header;
+        Items = items;
+    }
+
+    public string Header { get; }
+    public IReadOnlyList<ConversationRowViewModel> Items { get; }
+}
+
+public sealed class SidebarMenuItem
+{
+    public SidebarMenuItem(string label, bool isSelected)
+    {
+        Label = label;
+        IsSelected = isSelected;
+    }
+
+    public string Label { get; }
+    public bool IsSelected { get; }
+}
+
+public sealed record QuickCommandEntry(
+    string Category,
+    string Title,
+    string Subtitle,
+    Action Execute);
+
 /// <summary>
-/// Coordinates the Main Shell layout, Navigation Rail, Sidebar, Context Panel, startup orchestration, updates, and status bar.
+/// Coordinates the Main Shell layout, Activity Bar, Context-Aware Sidebar, Right Context Panel,
+/// startup orchestration, updates, quick command palette, and status bar.
 /// </summary>
 public sealed partial class MainShellViewModel : ObservableObject
 {
@@ -22,28 +69,43 @@ public sealed partial class MainShellViewModel : ObservableObject
     private readonly IWorkspaceContext _workspaceContext;
     private readonly ISettingsStore _settingsStore;
     private readonly IUpdateService _updateService;
+    private readonly INotificationService? _notificationService;
+    private readonly IErrorHandlingService? _errorHandling;
+    private readonly IRecoveryActionService? _recoveryService;
     private readonly IReadOnlyDictionary<NavigationPage, PageViewModelBase> _pages;
+    private readonly Dictionary<NavigationPage, bool> _contextVisibilityByPage = new()
+    {
+        [NavigationPage.Chat] = true,
+        [NavigationPage.Documents] = false,
+        [NavigationPage.Workspaces] = false,
+        [NavigationPage.Models] = false,
+        [NavigationPage.System] = false,
+        [NavigationPage.Settings] = false
+    };
 
     private bool _isSyncingContext;
     private bool _hasLoadedInitialWorkspaces;
+    private double _savedSidebarPixels = 260;
+    private double _savedContextPixels = 344;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsChatPage))]
+    [NotifyPropertyChangedFor(nameof(IsNonChatPage))]
+    [NotifyPropertyChangedFor(nameof(IsSettingsPage))]
     private NavigationPage _selectedPage;
 
     [ObservableProperty]
     private PageViewModelBase _currentPageViewModel;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SidebarColumnWidth))]
+    [NotifyPropertyChangedFor(nameof(SidebarSplitterWidth))]
     private bool _isSidebarVisible = true;
 
     [ObservableProperty]
-    private GridLength _sidebarWidth = new(260);
-
-    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ContextColumnWidth))]
+    [NotifyPropertyChangedFor(nameof(ContextSplitterWidth))]
     private bool _isContextPanelVisible = true;
-
-    [ObservableProperty]
-    private GridLength _contextPanelWidth = new(340);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsDocumentsContextTab))]
@@ -58,7 +120,7 @@ public sealed partial class MainShellViewModel : ObservableObject
     private bool _isApiReady;
 
     [ObservableProperty]
-    private bool _showEnvironmentBanner = true;
+    private bool _showEnvironmentBanner;
 
     [ObservableProperty]
     private bool _canRetryStartup;
@@ -67,7 +129,16 @@ public sealed partial class MainShellViewModel : ObservableObject
     private string _bannerMessage = "로컬 환경(Docker, Ollama, FastAPI) 상태를 점검하는 중입니다...";
 
     [ObservableProperty]
+    private string _titleStatusText = "초기화 중...";
+
+    [ObservableProperty]
+    private ServiceState _overallServiceState = ServiceState.Checking;
+
+    [ObservableProperty]
     private string _statusMessage = "초기화 중...";
+
+    [ObservableProperty]
+    private string _statusBarSummary = "초기화 중...";
 
     [ObservableProperty]
     private string _conversationSearchQuery = string.Empty;
@@ -77,6 +148,12 @@ public sealed partial class MainShellViewModel : ObservableObject
 
     [ObservableProperty]
     private ConversationDto? _selectedConversation;
+
+    [ObservableProperty]
+    private string _sidebarSectionTitle = string.Empty;
+
+    [ObservableProperty]
+    private string _activeModelLabel = "qwen2.5:7b";
 
     [ObservableProperty]
     private bool _hasAvailableUpdate;
@@ -92,7 +169,7 @@ public sealed partial class MainShellViewModel : ObservableObject
     private string _updateButtonLabel = "업데이트";
 
     [ObservableProperty]
-    private string _updateTooltip = "새 버전 업데이트";
+    private string _updateTooltip = "업데이트 확인 (Settings → Updates)";
 
     private string? _availableUpdateUrl;
 
@@ -111,7 +188,10 @@ public sealed partial class MainShellViewModel : ObservableObject
         WorkspacesViewModel workspacesViewModel,
         ModelsViewModel modelsViewModel,
         SystemViewModel systemViewModel,
-        SettingsViewModel settingsViewModel)
+        SettingsViewModel settingsViewModel,
+        INotificationService? notificationService = null,
+        IErrorHandlingService? errorHandling = null,
+        IRecoveryActionService? recoveryService = null)
     {
         _navigationService = navigationService;
         _themeService = themeService;
@@ -120,14 +200,29 @@ public sealed partial class MainShellViewModel : ObservableObject
         _workspaceContext = workspaceContext;
         _settingsStore = settingsStore;
         _updateService = updateService;
+        _notificationService = notificationService;
+        _errorHandling = errorHandling;
+        _recoveryService = recoveryService;
+
+        ChatPanel = chatViewModel;
         DocumentsPanel = documentsViewModel;
+        WorkspacesPanel = workspacesViewModel;
+        ModelsPanel = modelsViewModel;
+        SystemPanel = systemViewModel;
+        SettingsPanel = settingsViewModel;
         EvidencePanel = evidenceViewModel;
         PreviewPanel = previewViewModel;
+
+        ActiveModelLabel = settingsStore.Current.SelectedModelName;
+        settingsStore.SettingsChanged += (_, updated) => RunOnUiThread(() =>
+        {
+            ActiveModelLabel = updated.SelectedModelName;
+        });
 
         chatViewModel.EvidenceRequested += (_, req) => RunOnUiThread(() =>
         {
             SelectedContextTab = ContextPanelTab.Evidence;
-            IsContextPanelVisible = true;
+            SetContextPanelVisible(true);
             _ = EvidencePanel.LoadTraceAsync(req);
 
             if (!string.IsNullOrWhiteSpace(req.HighlightFileName))
@@ -138,12 +233,46 @@ public sealed partial class MainShellViewModel : ObservableObject
             }
         });
 
+        chatViewModel.AttachDocumentRequested += (_, _) => RunOnUiThread(() =>
+        {
+            SelectedContextTab = ContextPanelTab.Documents;
+            SetContextPanelVisible(true);
+            if (DocumentsPanel.BrowseAndUploadCommand.CanExecute(null))
+            {
+                DocumentsPanel.BrowseAndUploadCommand.Execute(null);
+            }
+        });
+
+        chatViewModel.OpenDocumentsTabRequested += (_, _) => RunOnUiThread(() =>
+        {
+            SelectedContextTab = ContextPanelTab.Documents;
+            SetContextPanelVisible(true);
+        });
+
         evidenceViewModel.PreviewRequested += (_, previewReq) => RunOnUiThread(() =>
         {
             SelectedContextTab = ContextPanelTab.Preview;
-            IsContextPanelVisible = true;
+            SetContextPanelVisible(true);
             PreviewPanel.LoadDocument(previewReq);
             StatusMessage = $"문서 미리보기: {previewReq.FileName} (p.{previewReq.PageNumber})";
+        });
+
+        evidenceViewModel.PromptDialogRequested += (_, prompt) => RunOnUiThread(() =>
+        {
+            PromptDialogRequested?.Invoke(this, prompt);
+        });
+
+        documentsViewModel.PreviewRequested += (_, previewReq) => RunOnUiThread(() =>
+        {
+            SelectedContextTab = ContextPanelTab.Preview;
+            SetContextPanelVisible(true);
+            PreviewPanel.LoadDocument(previewReq);
+            StatusMessage = $"문서 미리보기: {previewReq.FileName}";
+        });
+
+        workspacesViewModel.NewWorkspaceDialogRequested += (_, _) => RunOnUiThread(() =>
+        {
+            NewWorkspaceDialogRequested?.Invoke(this, EventArgs.Empty);
         });
 
         _pages = new Dictionary<NavigationPage, PageViewModelBase>
@@ -158,26 +287,27 @@ public sealed partial class MainShellViewModel : ObservableObject
 
         _selectedPage = _navigationService.CurrentPage;
         _currentPageViewModel = _pages[_selectedPage];
+        _isContextPanelVisible = _contextVisibilityByPage[_selectedPage];
 
-        _navigationService.PageChanged += (_, page) =>
-        {
-            SelectedPage = page;
-            CurrentPageViewModel = _pages[page];
-        };
+        _navigationService.PageChanged += (_, page) => RunOnUiThread(() => OnNavigatedToPage(page));
 
-        NavigationItems =
+        TopNavigationItems =
         [
-            new NavigationItem(NavigationPage.Chat, "Chat", "\uE8BD", "AI Chat Workspace"),
-            new NavigationItem(NavigationPage.Documents, "Docs", "\uE8A5", "Documents"),
-            new NavigationItem(NavigationPage.Workspaces, "Spaces", "\uE8F1", "Workspaces"),
-            new NavigationItem(NavigationPage.Models, "Models", "\uE99A", "Models"),
-            new NavigationItem(NavigationPage.System, "System", "\uE9D9", "System & Logs"),
-            new NavigationItem(NavigationPage.Settings, "Settings", "\uE713", "Settings")
+            new NavigationItem(NavigationPage.Chat, "Chat", "Icon.Chat", "Chat"),
+            new NavigationItem(NavigationPage.Documents, "Documents", "Icon.Documents", "Documents"),
+            new NavigationItem(NavigationPage.Workspaces, "Workspaces", "Icon.Workspaces", "Workspaces"),
+            new NavigationItem(NavigationPage.Models, "Models", "Icon.Models", "Models"),
+            new NavigationItem(NavigationPage.System, "System", "Icon.System", "System")
         ];
+        SettingsNavigationItem = new NavigationItem(NavigationPage.Settings, "Settings", "Icon.Settings", "Settings");
+
+        NavigationItems = [.. TopNavigationItems, SettingsNavigationItem];
 
         ServiceStatuses = new ObservableCollection<ServiceComponentStatus>(_serviceManager.CurrentStatuses);
         Workspaces = new ObservableCollection<WorkspaceDto>();
         FilteredConversations = new ObservableCollection<ConversationDto>();
+        ConversationGroups = new ObservableCollection<ConversationGroupViewModel>();
+        SidebarMenuItems = new ObservableCollection<SidebarMenuItem>();
 
         _serviceManager.StatusesChanged += (_, statuses) => RunOnUiThread(() =>
         {
@@ -189,6 +319,7 @@ public sealed partial class MainShellViewModel : ObservableObject
 
             var readyNow = _serviceManager.IsApiReady;
             IsApiReady = readyNow;
+            UpdateHealthSummary();
             if (readyNow && !_hasLoadedInitialWorkspaces)
             {
                 _ = LoadInitialWorkspaceDataAsync();
@@ -199,31 +330,84 @@ public sealed partial class MainShellViewModel : ObservableObject
         _workspaceContext.StateChanged += (_, _) => RunOnUiThread(SyncFromWorkspaceContext);
 
         systemViewModel.SetupWizardRequested += (_, _) => RequestSetupWizard();
+
+        ActiveToasts = new ObservableCollection<ToastNotificationItem>();
+        if (_notificationService is not null)
+        {
+            _notificationService.NotificationAdded += (_, toast) => RunOnUiThread(() => AddToast(toast));
+            _notificationService.NotificationDismissed += (_, id) => RunOnUiThread(() => RemoveToast(id));
+        }
+
+        RebuildContextSidebarMenu();
     }
 
+    public ObservableCollection<ToastNotificationItem> ActiveToasts { get; }
+
+    public ChatViewModel ChatPanel { get; }
     public DocumentsViewModel DocumentsPanel { get; }
-
+    public WorkspacesViewModel WorkspacesPanel { get; }
+    public ModelsViewModel ModelsPanel { get; }
+    public SystemViewModel SystemPanel { get; }
+    public SettingsViewModel SettingsPanel { get; }
     public EvidenceViewModel EvidencePanel { get; }
-
     public PreviewViewModel PreviewPanel { get; }
 
+    public IReadOnlyList<NavigationItem> TopNavigationItems { get; }
+    public NavigationItem SettingsNavigationItem { get; }
     public IReadOnlyList<NavigationItem> NavigationItems { get; }
 
     public ObservableCollection<ServiceComponentStatus> ServiceStatuses { get; }
-
     public ObservableCollection<WorkspaceDto> Workspaces { get; }
-
     public ObservableCollection<ConversationDto> FilteredConversations { get; }
+    public ObservableCollection<ConversationGroupViewModel> ConversationGroups { get; }
+    public ObservableCollection<SidebarMenuItem> SidebarMenuItems { get; }
+
+    public bool IsChatPage => SelectedPage == NavigationPage.Chat;
+    public bool IsNonChatPage => SelectedPage != NavigationPage.Chat;
+    public bool IsSettingsPage => SelectedPage == NavigationPage.Settings;
 
     public bool IsDocumentsContextTab => SelectedContextTab == ContextPanelTab.Documents;
     public bool IsEvidenceContextTab => SelectedContextTab == ContextPanelTab.Evidence;
     public bool IsPreviewContextTab => SelectedContextTab == ContextPanelTab.Preview;
 
-    public string AppVersionLabel => $"dograc Desktop · v{_updateService.CurrentVersion}";
+    public GridLength SidebarColumnWidth
+    {
+        get => IsSidebarVisible ? new GridLength(_savedSidebarPixels) : new GridLength(0);
+        set
+        {
+            if (IsSidebarVisible && value.IsAbsolute && value.Value >= 180 && value.Value <= 420)
+            {
+                _savedSidebarPixels = value.Value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
+    public GridLength SidebarSplitterWidth => IsSidebarVisible ? new GridLength(1) : new GridLength(0);
+
+    public GridLength ContextColumnWidth
+    {
+        get => IsContextPanelVisible ? new GridLength(_savedContextPixels) : new GridLength(0);
+        set
+        {
+            if (IsContextPanelVisible && value.IsAbsolute && value.Value >= 260 && value.Value <= 560)
+            {
+                _savedContextPixels = value.Value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public GridLength ContextSplitterWidth => IsContextPanelVisible ? new GridLength(1) : new GridLength(0);
+
+    public string AppVersionLabel => $"dograc Desktop · v{_updateService.CurrentVersion}";
+    public string ShortVersionLabel => $"v{_updateService.CurrentVersion}";
     public bool IsNotInstallingUpdate => !IsInstallingUpdate;
 
     public event EventHandler<EnvironmentCheckSummary>? SetupWizardRequested;
+    public event EventHandler? QuickCommandRequested;
+    public event EventHandler<string>? PromptDialogRequested;
+    public event EventHandler? NewWorkspaceDialogRequested;
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -254,9 +438,12 @@ public sealed partial class MainShellViewModel : ObservableObject
                 }
             });
         }
-        catch
+        catch (Exception ex)
         {
-            // Silent ignore in offline/air-gapped environments.
+            _errorHandling?.Handle(
+                ex,
+                new ErrorContext("Updates", "Updates", "SilentUpdateCheck"),
+                notifyToast: false);
         }
     }
 
@@ -265,6 +452,13 @@ public sealed partial class MainShellViewModel : ObservableObject
     {
         if (IsInstallingUpdate)
         {
+            return;
+        }
+
+        if (!HasAvailableUpdate)
+        {
+            SettingsPanel.SelectSectionCommand.Execute("Updates");
+            _navigationService.NavigateTo(NavigationPage.Settings);
             return;
         }
 
@@ -279,11 +473,13 @@ public sealed partial class MainShellViewModel : ObservableObject
                 }
                 catch
                 {
+                    SettingsPanel.SelectSectionCommand.Execute("Updates");
                     _navigationService.NavigateTo(NavigationPage.Settings);
                 }
             }
             else
             {
+                SettingsPanel.SelectSectionCommand.Execute("Updates");
                 _navigationService.NavigateTo(NavigationPage.Settings);
             }
 
@@ -305,7 +501,8 @@ public sealed partial class MainShellViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusMessage = $"자동 업데이트 실패: {ex.Message}";
+            var err = _errorHandling?.Handle(ex, new ErrorContext("Updates", "Updates", "InstallUpdate"), InstallOrOpenUpdateAsync, notifyToast: true);
+            StatusMessage = err?.Description ?? $"자동 업데이트 실패: {ex.Message}";
             UpdateButtonLabel = "업데이트 재시도";
         }
         finally
@@ -337,6 +534,7 @@ public sealed partial class MainShellViewModel : ObservableObject
         }
 
         _workspaceContext.SelectConversation(value?.Id);
+        RebuildConversationGroups();
         if (value is not null && SelectedPage != NavigationPage.Chat)
         {
             _navigationService.NavigateTo(NavigationPage.Chat);
@@ -359,6 +557,12 @@ public sealed partial class MainShellViewModel : ObservableObject
     private void OpenWorkspacesPage()
     {
         _navigationService.NavigateTo(NavigationPage.Workspaces);
+    }
+
+    [RelayCommand]
+    private void OpenQuickCommandPalette()
+    {
+        QuickCommandRequested?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -396,6 +600,17 @@ public sealed partial class MainShellViewModel : ObservableObject
         {
             StatusMessage = $"대화 생성 실패: {ex.Message}";
         }
+    }
+
+    [RelayCommand]
+    private void SelectConversationRow(ConversationRowViewModel? row)
+    {
+        if (row is null)
+        {
+            return;
+        }
+
+        SelectedConversation = row.Conversation;
     }
 
     [RelayCommand]
@@ -437,7 +652,7 @@ public sealed partial class MainShellViewModel : ObservableObject
     [RelayCommand]
     private void ToggleContextPanel()
     {
-        IsContextPanelVisible = !IsContextPanelVisible;
+        SetContextPanelVisible(!IsContextPanelVisible);
     }
 
     [RelayCommand]
@@ -446,22 +661,158 @@ public sealed partial class MainShellViewModel : ObservableObject
         SelectedContextTab = tab;
         if (!IsContextPanelVisible)
         {
-            IsContextPanelVisible = true;
+            SetContextPanelVisible(true);
         }
+    }
+
+    [RelayCommand]
+    private void BackToEvidence()
+    {
+        SelectedContextTab = ContextPanelTab.Evidence;
+    }
+
+    [RelayCommand]
+    private void SelectSidebarMenuItem(SidebarMenuItem? item)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        switch (SelectedPage)
+        {
+            case NavigationPage.Documents:
+                DocumentsPanel.ApplySidebarFilter(item.Label);
+                break;
+            case NavigationPage.Workspaces:
+                WorkspacesPanel.ApplySidebarFilter(item.Label);
+                break;
+            case NavigationPage.Models:
+                ModelsPanel.SelectedSection = item.Label;
+                break;
+            case NavigationPage.System:
+                if (item.Label == "환경 초기 설정 마법사")
+                {
+                    RequestSetupWizard();
+                }
+                break;
+            case NavigationPage.Settings:
+                SettingsPanel.SelectSectionCommand.Execute(item.Label);
+                break;
+        }
+
+        RebuildContextSidebarMenu(item.Label);
     }
 
     [RelayCommand]
     private void CycleTheme()
     {
-        var next = _themeService.CurrentMode switch
-        {
-            AppThemeMode.System => AppThemeMode.Light,
-            AppThemeMode.Light => AppThemeMode.Dark,
-            _ => AppThemeMode.System
-        };
+        var next = _themeService.EffectiveTheme == AppThemeMode.Dark
+            ? AppThemeMode.Light
+            : AppThemeMode.Dark;
         _themeService.ApplyTheme(next);
         _settingsStore.Save(_settingsStore.Current with { ThemeMode = next });
         StatusMessage = $"테마 변경됨: {next}";
+    }
+
+    public IReadOnlyList<QuickCommandEntry> GetQuickCommandItems()
+    {
+        var list = new List<QuickCommandEntry>
+        {
+            new("페이지", "Chat", "AI Chat Workspace로 이동", () => _navigationService.NavigateTo(NavigationPage.Chat)),
+            new("페이지", "Documents", "문서 업로드 및 색인 관리", () => _navigationService.NavigateTo(NavigationPage.Documents)),
+            new("페이지", "Workspaces", "워크스페이스 관리 및 전환", () => _navigationService.NavigateTo(NavigationPage.Workspaces)),
+            new("페이지", "Models", "로컬 Ollama 모델 선택 및 연결", () => _navigationService.NavigateTo(NavigationPage.Models)),
+            new("페이지", "System", "서비스 상태 진단 및 실시간 로그", () => _navigationService.NavigateTo(NavigationPage.System)),
+            new("페이지", "Settings", "테마, 로컬 환경, 업데이트 설정", () => _navigationService.NavigateTo(NavigationPage.Settings)),
+            new("동작", "새 대화 시작", "현재 워크스페이스에 새 대화 생성", () => { if (CreateConversationCommand.CanExecute(null)) CreateConversationCommand.Execute(null); }),
+            new("동작", "파일 추가", "문서 파일 선택 및 업로드", () => { if (DocumentsPanel.BrowseAndUploadCommand.CanExecute(null)) DocumentsPanel.BrowseAndUploadCommand.Execute(null); }),
+            new("동작", "테마 전환 (Light / Dark)", "라이트 모드와 다크 모드 전환", CycleTheme),
+            new("동작", "왼쪽 사이드바 토글", "사이드바 열기 또는 닫기", ToggleSidebar),
+            new("동작", "오른쪽 컨텍스트 패널 토글", "Documents/Evidence/Preview 패널 열기 또는 닫기", ToggleContextPanel),
+            new("동작", "초기 환경 설정 마법사 열기", "Docker / Ollama / FastAPI 점검", RequestSetupWizard)
+        };
+
+        foreach (var ws in Workspaces)
+        {
+            var captured = ws;
+            list.Add(new QuickCommandEntry("워크스페이스", captured.Name, "워크스페이스 전환", () => SelectedWorkspace = captured));
+        }
+
+        foreach (var conv in FilteredConversations.Take(8))
+        {
+            var captured = conv;
+            list.Add(new QuickCommandEntry("대화", captured.Title, "대화 열기", () => SelectedConversation = captured));
+        }
+
+        return list;
+    }
+
+    private void OnNavigatedToPage(NavigationPage page)
+    {
+        _contextVisibilityByPage[SelectedPage] = IsContextPanelVisible;
+        SelectedPage = page;
+        CurrentPageViewModel = _pages[page];
+        SetContextPanelVisible(_contextVisibilityByPage.GetValueOrDefault(page, page == NavigationPage.Chat));
+        RebuildContextSidebarMenu();
+    }
+
+    private void SetContextPanelVisible(bool visible)
+    {
+        _contextVisibilityByPage[SelectedPage] = visible;
+        IsContextPanelVisible = visible;
+    }
+
+    private void RebuildContextSidebarMenu(string? explicitSelected = null)
+    {
+        SidebarMenuItems.Clear();
+
+        string[] items;
+        string selected;
+
+        switch (SelectedPage)
+        {
+            case NavigationPage.Documents:
+                SidebarSectionTitle = "문서 필터";
+                items = ["전체 문서", "색인 완료", "처리 중", "실패"];
+                selected = explicitSelected ?? (DocumentsPanel.SelectedStatusFilter == "전체 상태"
+                    ? "전체 문서"
+                    : DocumentsPanel.SelectedStatusFilter);
+                break;
+
+            case NavigationPage.Workspaces:
+                SidebarSectionTitle = "워크스페이스";
+                items = ["전체 워크스페이스", "현재 워크스페이스"];
+                selected = explicitSelected ?? (WorkspacesPanel.ShowCurrentOnly ? "현재 워크스페이스" : "전체 워크스페이스");
+                break;
+
+            case NavigationPage.Models:
+                SidebarSectionTitle = "모델 관리";
+                items = ["설치된 모델", "추천 모델", "연결 설정"];
+                selected = explicitSelected ?? ModelsPanel.SelectedSection;
+                break;
+
+            case NavigationPage.System:
+                SidebarSectionTitle = "시스템 진단";
+                items = ["서비스 상태", "실시간 로그", "환경 초기 설정 마법사"];
+                selected = explicitSelected ?? "서비스 상태";
+                break;
+
+            case NavigationPage.Settings:
+                SidebarSectionTitle = "설정";
+                items = ["General", "Appearance", "Local Environment", "Updates", "About"];
+                selected = explicitSelected ?? SettingsPanel.SelectedSection;
+                break;
+
+            default:
+                SidebarSectionTitle = string.Empty;
+                return;
+        }
+
+        foreach (var label in items)
+        {
+            SidebarMenuItems.Add(new SidebarMenuItem(label, string.Equals(label, selected, StringComparison.OrdinalIgnoreCase)));
+        }
     }
 
     private async Task LoadInitialWorkspaceDataAsync(CancellationToken cancellationToken = default)
@@ -475,6 +826,7 @@ public sealed partial class MainShellViewModel : ObservableObject
                 StatusMessage = _workspaceContext.Workspaces.Count > 0
                     ? $"워크스페이스 {_workspaceContext.Workspaces.Count}개 로드 완료"
                     : "워크스페이스가 없습니다. Workspaces 페이지에서 새 워크스페이스를 만들어 주세요.";
+                UpdateHealthSummary();
             });
         }
         catch (Exception ex)
@@ -536,6 +888,52 @@ public sealed partial class MainShellViewModel : ObservableObject
         }
 
         SelectedConversation = FilteredConversations.FirstOrDefault(c => c.Id == _workspaceContext.SelectedConversation?.Id);
+        RebuildConversationGroups();
+    }
+
+    private void RebuildConversationGroups()
+    {
+        ConversationGroups.Clear();
+        var today = DateTimeOffset.Now.Date;
+        var yesterday = today.AddDays(-1);
+        var selectedId = SelectedConversation?.Id;
+
+        var todayItems = new List<ConversationRowViewModel>();
+        var yesterdayItems = new List<ConversationRowViewModel>();
+        var earlierItems = new List<ConversationRowViewModel>();
+
+        foreach (var conv in FilteredConversations)
+        {
+            var localDate = conv.CreatedAt.LocalDateTime.Date;
+            var row = new ConversationRowViewModel(conv, selectedId == conv.Id);
+            if (localDate >= today)
+            {
+                todayItems.Add(row);
+            }
+            else if (localDate == yesterday)
+            {
+                yesterdayItems.Add(row);
+            }
+            else
+            {
+                earlierItems.Add(row);
+            }
+        }
+
+        if (todayItems.Count > 0)
+        {
+            ConversationGroups.Add(new ConversationGroupViewModel("오늘", todayItems));
+        }
+
+        if (yesterdayItems.Count > 0)
+        {
+            ConversationGroups.Add(new ConversationGroupViewModel("어제", yesterdayItems));
+        }
+
+        if (earlierItems.Count > 0)
+        {
+            ConversationGroups.Add(new ConversationGroupViewModel("이전", earlierItems));
+        }
     }
 
     private void ApplyStartupState(StartupState state)
@@ -544,8 +942,9 @@ public sealed partial class MainShellViewModel : ObservableObject
         IsApiReady = _serviceManager.IsApiReady;
         BannerMessage = _startupOrchestrator.StatusBannerText;
         StatusMessage = _startupOrchestrator.StatusBannerText;
-        ShowEnvironmentBanner = state != StartupState.Ready;
+        ShowEnvironmentBanner = state is StartupState.Failed or StartupState.NeedsSetup;
         CanRetryStartup = state is StartupState.Failed or StartupState.NeedsSetup;
+        UpdateHealthSummary();
 
         if (state == StartupState.Ready && !_hasLoadedInitialWorkspaces)
         {
@@ -555,6 +954,105 @@ public sealed partial class MainShellViewModel : ObservableObject
         if (state == StartupState.NeedsSetup && _startupOrchestrator.LastEnvironmentCheck is not null)
         {
             SetupWizardRequested?.Invoke(this, _startupOrchestrator.LastEnvironmentCheck);
+        }
+    }
+
+    [RelayCommand]
+    private void DismissToast(ToastNotificationItem? toast)
+    {
+        if (toast is not null)
+        {
+            RemoveToast(toast.Id);
+        }
+    }
+
+    [RelayCommand]
+    private async Task ExecuteToastActionAsync(object? parameter)
+    {
+        if (parameter is not RecoveryActionDescriptor action)
+        {
+            return;
+        }
+
+        var parentToast = ActiveToasts.FirstOrDefault(t => t.Actions.Contains(action));
+        if (parentToast is not null)
+        {
+            RemoveToast(parentToast.Id);
+        }
+
+        if (_recoveryService is not null)
+        {
+            await _recoveryService.ExecuteAsync(action, parentToast?.SourceError, parentToast?.RetryCallback);
+        }
+    }
+
+    private void AddToast(ToastNotificationItem toast)
+    {
+        ActiveToasts.Insert(0, toast);
+        while (ActiveToasts.Count > 3)
+        {
+            ActiveToasts.RemoveAt(ActiveToasts.Count - 1);
+        }
+
+        if (toast.Severity is ErrorSeverity.Information or ErrorSeverity.Warning)
+        {
+            var timer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(toast.Severity == ErrorSeverity.Information ? 4.5 : 8)
+            };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                RemoveToast(toast.Id);
+            };
+            timer.Start();
+        }
+    }
+
+    private void RemoveToast(Guid id)
+    {
+        var existing = ActiveToasts.FirstOrDefault(t => t.Id == id);
+        if (existing is not null)
+        {
+            ActiveToasts.Remove(existing);
+        }
+    }
+
+    private void UpdateHealthSummary()
+    {
+        var apiStatus = ServiceStatuses.FirstOrDefault(s => s.Key == "api");
+        var anyDegraded = ServiceStatuses.Any(s => s.State == ServiceState.Degraded);
+        var anyError = ServiceStatuses.Any(s => s.State is ServiceState.Failed or ServiceState.Error or ServiceState.Unreachable);
+
+        if (apiStatus?.State == ServiceState.Ready && !anyDegraded && !anyError)
+        {
+            TitleStatusText = "Local Ready";
+            OverallServiceState = ServiceState.Ready;
+            StatusBarSummary = "All services operational";
+        }
+        else if (apiStatus?.State == ServiceState.Degraded || (IsApiReady && (anyDegraded || anyError)))
+        {
+            TitleStatusText = "일부 서비스 확인 필요";
+            OverallServiceState = ServiceState.Degraded;
+            StatusBarSummary = "백엔드 응답 중 · 일부 하위 서비스(Docker/Ollama) 상태를 확인해 주세요";
+        }
+        else if (IsApiReady || StartupState == StartupState.Ready)
+        {
+            TitleStatusText = "Local Ready";
+            OverallServiceState = ServiceState.Ready;
+            StatusBarSummary = "All services operational";
+        }
+        else if (StartupState is StartupState.Failed or StartupState.NeedsSetup)
+        {
+            TitleStatusText = "환경 확인 필요";
+            OverallServiceState = ServiceState.Error;
+            StatusBarSummary = "로컬 환경 확인 필요";
+        }
+        else
+        {
+            TitleStatusText = "초기화 중...";
+            OverallServiceState = ServiceState.Starting;
+            StatusBarSummary = StatusMessage;
         }
     }
 

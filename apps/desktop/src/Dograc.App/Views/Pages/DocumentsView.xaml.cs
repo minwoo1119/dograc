@@ -11,6 +11,16 @@ public partial class DocumentsView : UserControl
         InitializeComponent();
     }
 
+    private void OnOverflowButtonClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.ContextMenu is not null)
+        {
+            button.ContextMenu.PlacementTarget = button;
+            button.ContextMenu.DataContext = button.DataContext;
+            button.ContextMenu.IsOpen = true;
+        }
+    }
+
     private async void OnFilesDrop(object sender, DragEventArgs e)
     {
         if (DataContext is not DocumentsViewModel vm)

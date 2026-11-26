@@ -8,18 +8,20 @@ using Dograc.Core.Services;
 namespace Dograc.App.ViewModels;
 
 public sealed record EvidenceChunkItem(
+    int ChunkNumber,
     string SourceFileName,
     int PageNumber,
     double Score,
     string Text,
     bool IsHighlighted)
 {
-    public string PageLabel => $"p.{PageNumber}";
-    public string ScoreLabel => $"유사도 {Score * 100.0:0.0}%";
+    public string MetaLabel => $"Page {PageNumber} · Chunk {ChunkNumber}";
+    public string ScoreLabel => $"{Score * 100.0:0.0}%";
 }
 
 /// <summary>
-/// ViewModel for the right Context Panel Evidence tab showing RAG trace metadata, retrieved chunks, and prompt.
+/// ViewModel for the flat, hairline-separated right Context Panel Evidence tab.
+/// Prompt text is displayed in a dedicated modal dialog per design/COMPONENTS.md.
 /// </summary>
 public sealed partial class EvidenceViewModel : ObservableObject
 {
@@ -45,10 +47,7 @@ public sealed partial class EvidenceViewModel : ObservableObject
     private string? _promptText;
 
     [ObservableProperty]
-    private bool _showPrompt;
-
-    [ObservableProperty]
-    private string _chunkCountLabel = "0개 발췌";
+    private string _chunkCountLabel = "검색된 발췌문 0개";
 
     public EvidenceViewModel(IDogracApiClient apiClient)
     {
@@ -59,6 +58,8 @@ public sealed partial class EvidenceViewModel : ObservableObject
 
     public event EventHandler<PreviewDocumentRequest>? PreviewRequested;
 
+    public event EventHandler<string>? PromptDialogRequested;
+
     public async Task LoadTraceAsync(EvidenceSelectionRequest request)
     {
         _loadCts?.Cancel();
@@ -68,7 +69,6 @@ public sealed partial class EvidenceViewModel : ObservableObject
 
         IsLoading = true;
         ErrorMessage = null;
-        ShowPrompt = false;
 
         try
         {
@@ -102,15 +102,17 @@ public sealed partial class EvidenceViewModel : ObservableObject
         ModelName = "N/A";
         LatencyLabel = "0 ms";
         PromptText = null;
-        ShowPrompt = false;
-        ChunkCountLabel = "0개 발췌";
+        ChunkCountLabel = "검색된 발췌문 0개";
         Chunks.Clear();
     }
 
     [RelayCommand]
-    private void TogglePrompt()
+    private void ShowPromptDialog()
     {
-        ShowPrompt = !ShowPrompt;
+        if (!string.IsNullOrWhiteSpace(PromptText))
+        {
+            PromptDialogRequested?.Invoke(this, PromptText);
+        }
     }
 
     [RelayCommand]
@@ -132,21 +134,41 @@ public sealed partial class EvidenceViewModel : ObservableObject
         PromptText = trace.Prompt;
 
         Chunks.Clear();
-        foreach (var chunk in trace.RetrievedChunks)
+        var matchedAny = false;
+        var built = new List<EvidenceChunkItem>();
+        for (var i = 0; i < trace.RetrievedChunks.Count; i++)
         {
+            var chunk = trace.RetrievedChunks[i];
             var matchesFile = !string.IsNullOrWhiteSpace(request.HighlightFileName) &&
                               chunk.SourceFileName.Contains(request.HighlightFileName, StringComparison.OrdinalIgnoreCase);
             var matchesPage = request.HighlightPageNumber is null || chunk.PageNumber == request.HighlightPageNumber.Value;
+            var isMatch = matchesFile && matchesPage;
+            if (isMatch)
+            {
+                matchedAny = true;
+            }
 
-            Chunks.Add(new EvidenceChunkItem(
+            built.Add(new EvidenceChunkItem(
+                i + 1,
                 chunk.SourceFileName,
                 chunk.PageNumber,
                 chunk.Score,
                 chunk.Text,
-                matchesFile && matchesPage));
+                isMatch));
         }
 
-        ChunkCountLabel = $"{Chunks.Count}개 발췌";
+        // If opened via general "답변 근거 보기 →" without a specific citation, highlight the top chunk.
+        if (!matchedAny && built.Count > 0)
+        {
+            built[0] = built[0] with { IsHighlighted = true };
+        }
+
+        foreach (var item in built)
+        {
+            Chunks.Add(item);
+        }
+
+        ChunkCountLabel = $"검색된 발췌문 {Chunks.Count}개";
     }
 
     private static void RunOnUiThread(Action action)
