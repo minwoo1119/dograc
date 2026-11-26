@@ -229,6 +229,29 @@
                     <TextBlock Text="{Binding ConnectionMessage}"
                                Style="{StaticResource Text.Caption}"
                                Margin="0,10,0,0" />
+
+                    <!-- Local vs External Endpoint Privacy Notice -->
+                    <Border CornerRadius="6"
+                            BorderThickness="1"
+                            Padding="10,8"
+                            Margin="0,10,0,0">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{DynamicResource Brush.Side}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsExternalEndpoint}" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Warning}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding EndpointPrivacyLabel}"
+                                   FontSize="12"
+                                   TextWrapping="Wrap"
+                                   Foreground="{DynamicResource Brush.TextSecondary}" />
+                    </Border>
                 </StackPanel>
             </Border>
 
@@ -296,23 +319,85 @@
                                                            Foreground="{DynamicResource Brush.TextMuted}"
                                                            VerticalAlignment="Center"
                                                            Margin="0,0,12,0" />
-                                                <Button Style="{StaticResource Button.Secondary}"
-                                                        Height="30"
-                                                        Padding="10,0"
-                                                        FontSize="12"
-                                                        Content="명령어 복사"
-                                                        Command="{Binding DataContext.CopyInstallCommandCommand, Source={x:Reference ModelsPageProxy}}"
-                                                        CommandParameter="{Binding Command}" />
-                                                <Button Style="{StaticResource Button.Primary}"
-                                                        Height="30"
-                                                        Padding="12,0"
-                                                        FontSize="12"
-                                                        Margin="6,0,0,0"
-                                                        Content="다운로드"
-                                                        ToolTip="Ollama 로컬 서버로 이 모델을 직접 다운로드합니다"
-                                                        IsEnabled="{Binding DataContext.IsNotDownloadingModel, Source={x:Reference ModelsPageProxy}}"
-                                                        Command="{Binding DataContext.DownloadModelCommand, Source={x:Reference ModelsPageProxy}}"
-                                                        CommandParameter="{Binding Name}" />
+
+                                                <!-- Active state: green dot + 사용 중 (no duplicate download button!) -->
+                                                <StackPanel Orientation="Horizontal"
+                                                            VerticalAlignment="Center"
+                                                            Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
+                                                    <Ellipse Width="7" Height="7"
+                                                             Fill="{DynamicResource Brush.Success}"
+                                                             Margin="0,0,6,0" />
+                                                    <TextBlock Text="사용 중"
+                                                               FontSize="12.5"
+                                                               FontWeight="Medium"
+                                                               Foreground="{DynamicResource Brush.Success}" />
+                                                </StackPanel>
+
+                                                <!-- Installed (not active): 설치됨 + 이 모델 사용 (no duplicate download button!) -->
+                                                <StackPanel Orientation="Horizontal"
+                                                            VerticalAlignment="Center"
+                                                            Visibility="{Binding IsInstalledOnly, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="설치됨"
+                                                               FontSize="12"
+                                                               Foreground="{DynamicResource Brush.TextMuted}"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,8,0" />
+                                                    <Button Style="{StaticResource Button.Secondary}"
+                                                            Height="30"
+                                                            Padding="10,0"
+                                                            FontSize="12"
+                                                            Content="이 모델 사용"
+                                                            Command="{Binding DataContext.SelectModelByNameCommand, Source={x:Reference ModelsPageProxy}}"
+                                                            CommandParameter="{Binding Name}" />
+                                                </StackPanel>
+
+                                                <!-- Downloading state -->
+                                                <StackPanel Orientation="Horizontal"
+                                                            VerticalAlignment="Center"
+                                                            Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="{Binding StatusBadgeLabel}"
+                                                               FontSize="12"
+                                                               FontWeight="Medium"
+                                                               Foreground="{DynamicResource Brush.Accent}"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,8,0" />
+                                                    <Button Style="{StaticResource Button.Ghost}"
+                                                            Height="28"
+                                                            Padding="8,0"
+                                                            FontSize="12"
+                                                            Content="취소"
+                                                            Command="{Binding DataContext.CancelDownloadCommand, Source={x:Reference ModelsPageProxy}}" />
+                                                </StackPanel>
+
+                                                <!-- Available or Failed state: Copy command + Download / Retry -->
+                                                <StackPanel Orientation="Horizontal"
+                                                            VerticalAlignment="Center"
+                                                            Visibility="{Binding CanDownload, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="실패"
+                                                               Visibility="{Binding IsFailed, Converter={StaticResource BoolToVisibility}}"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource Brush.Error}"
+                                                               VerticalAlignment="Center"
+                                                               Margin="0,0,8,0" />
+                                                    <Button Style="{StaticResource Button.Secondary}"
+                                                            Height="30"
+                                                            Padding="10,0"
+                                                            FontSize="12"
+                                                            Content="명령어 복사"
+                                                            Command="{Binding DataContext.CopyInstallCommandCommand, Source={x:Reference ModelsPageProxy}}"
+                                                            CommandParameter="{Binding Command}" />
+                                                    <Button Style="{StaticResource Button.Primary}"
+                                                            Height="30"
+                                                            Padding="12,0"
+                                                            FontSize="12"
+                                                            Margin="6,0,0,0"
+                                                            Content="{Binding DownloadButtonLabel}"
+                                                            ToolTip="Ollama 로컬 서버로 이 모델을 직접 다운로드합니다"
+                                                            IsEnabled="{Binding DataContext.IsNotDownloadingModel, Source={x:Reference ModelsPageProxy}}"
+                                                            Command="{Binding DataContext.DownloadModelCommand, Source={x:Reference ModelsPageProxy}}"
+                                                            CommandParameter="{Binding Name}" />
+                                                </StackPanel>
                                             </StackPanel>
                                         </Grid>
                                     </Border>

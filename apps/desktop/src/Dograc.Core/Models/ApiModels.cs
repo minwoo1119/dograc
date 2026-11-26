@@ -86,12 +86,15 @@ public sealed record DocumentDto(
     {
         "STORAGE_READ_FAILED" => "파일 읽기",
         "DOCUMENT_ENCRYPTED_PDF" => "암호화 PDF",
+        "DOCUMENT_ENCODING_ERROR" or "DOCUMENT_TXT_PARSE_FAILED" => "TXT 인코딩",
+        "DOCUMENT_PDF_PARSE_FAILED" => "PDF 텍스트 추출",
         "DOCUMENT_EMPTY_TEXT" => "빈 문서/스캔 PDF",
         "DOCUMENT_PARSE_FAILED" or "PARSE_ERROR" => "텍스트 추출",
         "DOCUMENT_CHUNKING_FAILED" => "Chunking",
         "DOCUMENT_EMBEDDING_FAILED" => "Embedding",
         "DOCUMENT_VECTOR_INDEX_FAILED" => "Vector Indexing",
         "DOCUMENT_DB_COMMIT_FAILED" => "DB 저장",
+        "DOCUMENT_PROCESS_INTERRUPTED" => "처리 중단",
         "DOCUMENT_PROCESSING_FAILED" => "색인 처리",
         _ => null
     };

@@ -82,6 +82,15 @@ def validate_document_upload(
         )
 
     expected_media_type = SUPPORTED_MEDIA_TYPES[extension]
+    if extension == ".txt" and b"\x00" not in content:
+        try:
+            content.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise DocumentValidationError(
+                code="DOCUMENT_ENCODING_ERROR",
+                message="텍스트 파일이 UTF-8 인코딩이 아닙니다. 메모장 등에서 UTF-8로 다시 저장한 뒤 업로드해 주세요.",
+            ) from exc
+
     detected_media_type = _detect_media_type(content)
     normalized_declared_type = (declared_media_type or "").partition(";")[0].strip().lower()
     if detected_media_type != expected_media_type or normalized_declared_type not in {

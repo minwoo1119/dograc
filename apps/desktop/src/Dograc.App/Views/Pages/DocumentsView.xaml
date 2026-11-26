@@ -17,9 +17,29 @@
 
             <FrameworkElement x:Name="DocsPageProxy" Visibility="Collapsed" />
 
-            <!-- Page Header -->
+            <!-- Page Header with explicit Active Workspace context -->
             <StackPanel Grid.Row="0">
-                <TextBlock Text="Documents" Style="{StaticResource Text.PageTitle}" />
+                <WrapPanel VerticalAlignment="Center">
+                    <TextBlock Text="Documents" Style="{StaticResource Text.PageTitle}" VerticalAlignment="Center" />
+                    <Border Background="{DynamicResource Brush.Selected}"
+                            CornerRadius="6"
+                            Padding="10,4"
+                            Margin="12,2,0,0"
+                            VerticalAlignment="Center"
+                            ToolTip="현재 선택된 워크스페이스">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="워크스페이스: "
+                                       FontSize="12"
+                                       Foreground="{DynamicResource Brush.TextSecondary}" />
+                            <TextBlock Text="{Binding ActiveWorkspaceName}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource Brush.Accent}"
+                                       MaxWidth="360"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Border>
+                </WrapPanel>
                 <TextBlock Text="워크스페이스 문서와 색인 상태를 관리합니다. PDF 또는 TXT 파일을 끌어다 놓아 업로드할 수 있습니다."
                            Style="{StaticResource Text.Caption}"
                            FontSize="13"

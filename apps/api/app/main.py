@@ -34,6 +34,60 @@ from app.vector_store.qdrant import QdrantVectorStore
 logger = logging.getLogger("dograc")
 
 
+class _ManagedLocalQdrantStore:
+    """
+    Lazy disk-persistent local Qdrant wrapper.
+    Acquires the Qdrant local storage lock ONLY during FastAPI lifespan (never at module import time)
+    and releases it deterministically on shutdown so app restarts reload persisted vectors cleanly.
+    """
+
+    def __init__(self, *, qdrant_dir, collection_name: str) -> None:
+        self._qdrant_dir = qdrant_dir
+        self._collection_name = collection_name
+        self._client = None
+        self._store: QdrantVectorStore | None = None
+
+    def _ensure_open(self) -> QdrantVectorStore:
+        if self._store is None:
+            self._qdrant_dir.mkdir(parents=True, exist_ok=True)
+            from qdrant_client import AsyncQdrantClient
+
+            self._client = AsyncQdrantClient(path=str(self._qdrant_dir))
+            self._store = QdrantVectorStore(
+                url="",
+                collection_name=self._collection_name,
+                client=self._client,
+            )
+        return self._store
+
+    async def close(self) -> None:
+        if self._client is not None:
+            client = self._client
+            self._client = None
+            self._store = None
+            await client.close()
+
+    async def ensure_collection(self, *, dimensions: int) -> None:
+        await self._ensure_open().ensure_collection(dimensions=dimensions)
+
+    async def upsert(self, records) -> None:
+        await self._ensure_open().upsert(records)
+
+    async def delete_document(self, *, workspace_id: uuid.UUID, document_id: uuid.UUID) -> None:
+        await self._ensure_open().delete_document(workspace_id=workspace_id, document_id=document_id)
+
+    async def search(self, *, query_vector: list[float], workspace_id: uuid.UUID, document_ids: list[uuid.UUID] | None, limit: int):
+        return await self._ensure_open().search(
+            query_vector=query_vector,
+            workspace_id=workspace_id,
+            document_ids=document_ids,
+            limit=limit,
+        )
+
+    async def check(self) -> None:
+        await self._ensure_open().check()
+
+
 def is_service_accessible(host: str, port: int, timeout: float = 0.6) -> bool:
     try:
         with socket.create_connection((host, port), timeout=timeout):
@@ -55,22 +109,27 @@ def create_app(
     app_settings = settings or get_settings()
     engine = None
     is_sqlite = False
+    local_qdrant_client = None
+    data_dir = app_settings.resolved_data_dir()
 
     if session_factory is None:
         db_url = app_settings.database_url
-        # If configured with postgresql but local postgres port (5432) is closed, fallback to local SQLite
+        # If configured with postgresql but local postgres port (5432) is closed, fallback to persistent local SQLite
         if "postgresql" in db_url and not is_service_accessible("localhost", 5432):
-            logger.info("PostgreSQL 서비스 미감지: 로컬 SQLite 데이터베이스(dograc_local.db)로 자동 폴백합니다.")
-            db_url = "sqlite+aiosqlite:///dograc_local.db"
+            data_dir.mkdir(parents=True, exist_ok=True)
+            sqlite_path = data_dir / "dograc_local.db"
+            logger.info("PostgreSQL 서비스 미감지: 영속 로컬 SQLite 데이터베이스(%s)로 자동 폴백합니다.", sqlite_path)
+            db_url = f"sqlite+aiosqlite:///{sqlite_path.as_posix()}"
             is_sqlite = True
         engine = create_engine(db_url)
         session_factory = create_session_factory(engine)
 
     if file_storage is None:
-        # If MinIO port (9000) is closed, fallback to LocalFileStorage
+        # If MinIO port (9000) is closed, fallback to persistent LocalFileStorage inside DOGRAC_DATA_DIR
         if not is_service_accessible("localhost", 9000):
-            logger.info("MinIO 스토리지 미감지: 로컬 파일시스템 스토리지(data/storage)로 자동 폴백합니다.")
-            file_storage = LocalFileStorage()
+            storage_dir = data_dir / "storage"
+            logger.info("MinIO 스토리지 미감지: 영속 로컬 파일시스템 스토리지(%s)로 자동 폴백합니다.", storage_dir)
+            file_storage = LocalFileStorage(base_dir=storage_dir)
         else:
             file_storage = S3FileStorage(
                 endpoint_url=app_settings.object_storage_endpoint,
@@ -87,17 +146,15 @@ def create_app(
         )
 
     if vector_store is None:
-        # If Qdrant port (6333) is closed, fallback to local in-memory Qdrant client
+        # If Qdrant port (6333) is closed, fallback to lazy DISK-PERSISTENT local Qdrant (survives app restarts!)
         if not is_service_accessible("localhost", 6333):
-            logger.info("Qdrant 서비스 미감지: 로컬 임베디드 Qdrant 클라이언트로 자동 폴백합니다.")
-            from qdrant_client import AsyncQdrantClient
-
-            local_client = AsyncQdrantClient(location=":memory:")
-            vector_store = QdrantVectorStore(
-                url="",
+            qdrant_dir = data_dir / "qdrant"
+            logger.info("Qdrant 서비스 미감지: 영속 로컬 디스크 Qdrant(%s)로 자동 폴백합니다.", qdrant_dir)
+            local_qdrant_client = _ManagedLocalQdrantStore(
+                qdrant_dir=qdrant_dir,
                 collection_name=app_settings.qdrant_collection,
-                client=local_client,
             )
+            vector_store = local_qdrant_client
         else:
             vector_store = QdrantVectorStore(
                 url=app_settings.qdrant_url,
@@ -139,6 +196,29 @@ def create_app(
             except Exception as e:
                 logger.warning(f"로컬 SQLite 초기화 중 경고: {e}")
 
+        # Recover documents left stuck in PROCESSING after an unexpected crash/kill
+        try:
+            from sqlalchemy import update
+            from app.db.models.document import Document, DocumentStatus
+
+            async with session_factory() as recovery_session:
+                result = await recovery_session.execute(
+                    update(Document)
+                    .where(Document.status == DocumentStatus.PROCESSING)
+                    .values(
+                        status=DocumentStatus.FAILED,
+                        failure_code="DOCUMENT_PROCESS_INTERRUPTED",
+                    )
+                )
+                if result.rowcount and result.rowcount > 0:
+                    await recovery_session.commit()
+                    logger.warning(
+                        "이전 비정상 종료로 PROCESSING 상태에 고착된 문서 %d건을 FAILED(DOCUMENT_PROCESS_INTERRUPTED)로 복구했습니다.",
+                        result.rowcount,
+                    )
+        except Exception as e:
+            logger.warning("비정상 종료 문서 상태 복구 점검 중 경고: %s", e)
+
         # Ensure vector store collection
         if vector_store is not None:
             try:
@@ -156,6 +236,11 @@ def create_app(
         try:
             yield
         finally:
+            if local_qdrant_client is not None:
+                try:
+                    await local_qdrant_client.close()
+                except Exception as e:
+                    logger.warning("로컬 Qdrant 클라이언트 종료 중 경고: %s", e)
             if engine is not None:
                 await engine.dispose()
 

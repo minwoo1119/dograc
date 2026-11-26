@@ -47,6 +47,39 @@
                                Foreground="{DynamicResource Brush.TextMuted}"
                                TextWrapping="Wrap"
                                Margin="0,6,0,0" />
+                    <WrapPanel Margin="0,10,0,0">
+                        <Border Background="{DynamicResource Brush.Side}"
+                                BorderBrush="{DynamicResource Brush.Border}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="8,4"
+                                Margin="0,0,8,0">
+                            <TextBlock Text="{Binding AppLaunchStatusLabel}"
+                                       FontSize="11.5"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource Brush.TextPrimary}" />
+                        </Border>
+                        <Border BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="8,4">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{DynamicResource Brush.WarningSubtle}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Warning}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsRagFullyReady}" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Selected}" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Text="{Binding RagServiceStatusLabel}"
+                                       FontSize="11.5"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource Brush.TextPrimary}" />
+                        </Border>
+                    </WrapPanel>
                 </StackPanel>
 
                 <Button Grid.Column="1"

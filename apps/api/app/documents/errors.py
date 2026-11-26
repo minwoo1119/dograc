@@ -11,6 +11,7 @@ class DocumentUploadValidationError(ApplicationError):
         status_code = {
             "FILE_TOO_LARGE": status.HTTP_413_CONTENT_TOO_LARGE,
             "UNSUPPORTED_FILE_TYPE": status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            "DOCUMENT_ENCODING_ERROR": status.HTTP_422_UNPROCESSABLE_CONTENT,
         }.get(error.code, status.HTTP_400_BAD_REQUEST)
         super().__init__(
             code=error.code,
@@ -43,6 +44,16 @@ class DocumentNotFoundError(ApplicationError):
             code="DOCUMENT_NOT_FOUND",
             message="Document was not found.",
             status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+
+class DocumentAlreadyProcessingError(ApplicationError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="DOCUMENT_ALREADY_PROCESSING",
+            message="이미 색인 처리가 진행 중인 문서입니다. 완료될 때까지 잠시 기다려 주세요.",
+            status_code=status.HTTP_409_CONFLICT,
+            stage="processing",
         )
 
 

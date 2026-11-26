@@ -38,6 +38,14 @@ public interface IProcessRunner
         string arguments,
         string workingDirectory,
         Action<string> onOutputLine);
+
+    IManagedProcess StartLongRunning(
+        string fileName,
+        string arguments,
+        string workingDirectory,
+        Action<string> onOutputLine,
+        IReadOnlyDictionary<string, string>? environmentVariables)
+        => StartLongRunning(fileName, arguments, workingDirectory, onOutputLine);
 }
 
 /// <summary>

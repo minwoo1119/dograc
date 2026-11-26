@@ -197,21 +197,39 @@ public sealed class SystemProcessRunner : IProcessRunner
         string arguments,
         string workingDirectory,
         Action<string> onOutputLine)
+        => StartLongRunning(fileName, arguments, workingDirectory, onOutputLine, null);
+
+    public IManagedProcess StartLongRunning(
+        string fileName,
+        string arguments,
+        string workingDirectory,
+        Action<string> onOutputLine,
+        IReadOnlyDictionary<string, string>? environmentVariables)
     {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = arguments,
+            WorkingDirectory = Directory.Exists(workingDirectory) ? workingDirectory : Environment.CurrentDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8
+        };
+
+        if (environmentVariables is not null)
+        {
+            foreach (var kv in environmentVariables)
+            {
+                startInfo.Environment[kv.Key] = kv.Value;
+            }
+        }
+
         var process = new Process
         {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = fileName,
-                Arguments = arguments,
-                WorkingDirectory = Directory.Exists(workingDirectory) ? workingDirectory : Environment.CurrentDirectory,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true,
-                StandardOutputEncoding = Encoding.UTF8,
-                StandardErrorEncoding = Encoding.UTF8
-            },
+            StartInfo = startInfo,
             EnableRaisingEvents = true
         };
 

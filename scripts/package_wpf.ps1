@@ -55,6 +55,30 @@ if (-not (Test-Path $ExePath)) {
     throw "Expected executable not found: $ExePath"
 }
 
+Write-Host "[2.5/4] Bundling FastAPI backend, compose.yaml, and .env.example (zero Git-repo dependency)..."
+$BundledApiDir = Join-Path $PublishDir "apps\api"
+$BundledInfraDir = Join-Path $PublishDir "infra"
+New-Item -ItemType Directory -Force -Path $BundledApiDir | Out-Null
+New-Item -ItemType Directory -Force -Path $BundledInfraDir | Out-Null
+
+# Copy backend Python source & dependency lockfiles (exclude .venv, caches, tests, local DBs)
+$ApiSourceDir = Join-Path $RepoRoot "apps\api"
+Copy-Item -Path (Join-Path $ApiSourceDir "app") -Destination (Join-Path $BundledApiDir "app") -Recurse -Force
+Get-ChildItem -Path (Join-Path $BundledApiDir "app") -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+foreach ($file in @("pyproject.toml", "uv.lock", "alembic.ini")) {
+    $src = Join-Path $ApiSourceDir $file
+    if (Test-Path $src) { Copy-Item -Path $src -Destination $BundledApiDir -Force }
+}
+$AlembicSrc = Join-Path $ApiSourceDir "alembic"
+if (Test-Path $AlembicSrc) {
+    Copy-Item -Path $AlembicSrc -Destination (Join-Path $BundledApiDir "alembic") -Recurse -Force
+}
+
+$ComposeSrc = Join-Path $RepoRoot "infra\compose.yaml"
+if (Test-Path $ComposeSrc) { Copy-Item -Path $ComposeSrc -Destination $BundledInfraDir -Force }
+$EnvExampleSrc = Join-Path $RepoRoot ".env.example"
+if (Test-Path $EnvExampleSrc) { Copy-Item -Path $EnvExampleSrc -Destination (Join-Path $PublishDir ".env.example") -Force }
+
 Write-Host "[3/4] Creating portable ZIP archive..."
 if (Test-Path $ZipPath) {
     Remove-Item -Force $ZipPath

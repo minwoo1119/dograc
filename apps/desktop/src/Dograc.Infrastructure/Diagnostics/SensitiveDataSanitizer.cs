@@ -40,6 +40,12 @@ public static partial class SensitiveDataSanitizer
             result = result[..contextMarker] + "[문서 문맥 생략됨 - 민감정보 보호]";
         }
 
+        var xmlContextMarker = result.IndexOf("<document_context", StringComparison.OrdinalIgnoreCase);
+        if (xmlContextMarker >= 0)
+        {
+            result = result[..xmlContextMarker] + "[문서 문맥 생략됨 - 민감정보 보호]";
+        }
+
         return result;
     }
 }
